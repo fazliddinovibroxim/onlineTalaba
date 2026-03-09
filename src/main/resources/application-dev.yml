@@ -1,0 +1,93 @@
+spring:
+  application:
+    name: furniture-project
+  datasource:
+    url: jdbc:postgresql://localhost:5432/talabadb
+    username: postgres
+    password: root
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  cache:
+    type: redis # For @Cacheable caching
+  #    redis:
+  #      time-to-live: 600000 # 10 daqiqa
+  #      key-prefix: ${REDIS_PREFIX:bushido}
+  #      use-key-prefix: true
+  #      cache-null-values: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: IbrOxim2003
+      timeout: 60000
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+  servlet:
+    multipart:
+      enabled: true
+      max-request-size: 100MB
+      max-file-size: 100MB
+      file-size-threshold: 50MB
+
+  sql:
+    init:
+      mode: never
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: fazliddinovibroxim@gmail.com
+    password: yets tltz mhvy ggmr
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  devsms:
+    token: f2a210dab7f931a99a35de5a914eb0d6dc84a0673213fd1fe7501fe69c87a774
+
+
+server:
+  port: 8080
+
+custom_app_config:
+
+  baseUrl: /api/v1
+  uploadDirectory: D:/talaba local files
+  downloadPath: D:/talaba local files
+
+  jwt_secret_key: UzbekChemicalIndustrySecuritySecretKey08032025
+  jwt_expire_time: 86400000
+
+  telegram:
+    bot:
+      token: 8372274064:AAHBuJ5w0d7eph6KDxHGJVEjJln93In_OHg
+      username: furniture_notify_bot
+      chat-id: 1617230263
+      chat-id2: 656085453
+
+  google:
+    client-id: 84034021634-4ttgatvs97luchvso2q8ss3f50tu0ih7.apps.googleusercontent.com
+
+app:
+  storage:
+    s3:
+      endpoint: http://minio:9000
+
+  livekit:
+    url: http://livekit:7880
+
+  firebase:
+    config-path: firebase/onlinetalaba-eef62-firebase-adminsdk-fbsvc-26cc1ef961.json

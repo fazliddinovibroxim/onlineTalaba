@@ -1,0 +1,37 @@
+package com.example.onlinetalaba.controller;
+
+import com.example.onlinetalaba.dto.chat.RoomChatMessageResponse;
+import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.security.CurrentUser;
+import com.example.onlinetalaba.service.RoomChatService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/rooms/{roomId}/chat")
+@RequiredArgsConstructor
+public class RoomChatController {
+
+    private final RoomChatService roomChatService;
+
+    @GetMapping
+    public ResponseEntity<List<RoomChatMessageResponse>> getMessages(
+            @PathVariable Long roomId,
+            @CurrentUser User currentUser
+    ) {
+        return ResponseEntity.ok(roomChatService.getRoomMessages(roomId, currentUser));
+    }
+
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<Void> deleteMessage(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @CurrentUser User currentUser
+    ) {
+        roomChatService.deleteMessage(messageId, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+}

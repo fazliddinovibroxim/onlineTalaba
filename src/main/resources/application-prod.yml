@@ -1,0 +1,91 @@
+spring:
+  application:
+    name: furniture-project
+  datasource:
+    url: ${DATASOURCE_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_TABLE_CREATE_MODE}
+    show-sql: ${SHOW_SQL_LOG}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  cache:
+    type: redis # For @Cacheable caching
+  #    redis:
+  #      time-to-live: 600000 # 10 daqiqa
+  #      key-prefix: ${REDIS_PREFIX:bushido}
+  #      use-key-prefix: true
+  #      cache-null-values: false
+
+  data:
+    redis:
+      host: 84.247.170.206
+      port: 6379
+      password: ${REDIS_PASSWORD}
+      timeout: 60000
+
+  kafka:
+    bootstrap-servers: kafka:9092
+
+  servlet:
+    multipart:
+      enabled: true
+      max-request-size: 100MB
+      max-file-size: 100MB
+      file-size-threshold: 50MB
+
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE}
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME}
+    password: ${GMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  devsms :
+    token : ${DEVSMS_TOKEN}
+
+server:
+  port: ${APP_PORT}
+
+custom_app_config:
+
+  baseUrl: ${BASE_URL}
+  uploadDirectory: ${UPLOAD_DIRECTORY_PROD}
+  downloadPath: ${UPLOAD_DIRECTORY_PROD}
+
+  jwt_secret_key: ${JWT_SECRET_KEY}
+  jwt_expire_time: ${JWT_EXPIRE_TIME}
+
+  telegram:
+    bot:
+      token: ${TELEGRAM_BOT_TOKEN}
+      username: ${TELEGRAM_BOT_USERNAME}
+      chat-id: ${TELEGRAM_BOT_CHATID}
+      chat-id2: ${TELEGRAM_BOT_CHATID2}
+
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}
+
+app:
+  storage:
+    s3:
+      endpoint: http://minio:9000
+
+    livekit:
+      url: http://livekit:7880
+
+    firebase:
+      config-path: firebase/onlinetalaba-eef62-firebase-adminsdk-fbsvc-26cc1ef961.json

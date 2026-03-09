@@ -1,0 +1,79 @@
+package com.example.onlinetalaba.service;
+
+import com.example.onlinetalaba.dto.live.WhiteboardEventRequest;
+import com.example.onlinetalaba.dto.live.WhiteboardEventResponse;
+import com.example.onlinetalaba.entity.LiveSession;
+import com.example.onlinetalaba.entity.RoomMember;
+import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.entity.WhiteboardEvent;
+import com.example.onlinetalaba.repository.LiveSessionRepository;
+import com.example.onlinetalaba.repository.RoomMemberRepository;
+import com.example.onlinetalaba.repository.WhiteboardEventRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class WhiteboardEventService {
+
+    private final WhiteboardEventRepository whiteboardEventRepository;
+    private final LiveSessionRepository liveSessionRepository;
+    private final RoomMemberRepository roomMemberRepository;
+
+    @Transactional
+    public WhiteboardEventResponse saveEvent(WhiteboardEventRequest request, User currentUser) {
+        LiveSession liveSession = liveSessionRepository.findById(request.getLiveSessionId())
+                .orElseThrow(() -> new RuntimeException("Live session not found"));
+
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
+                        liveSession.getLessonSchedule().getRoom().getId(),
+                        currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("Access denied"));
+
+        if (!member.isActive()) {
+            throw new RuntimeException("Inactive room member");
+        }
+
+        WhiteboardEvent event = WhiteboardEvent.builder()
+                .liveSession(liveSession)
+                .sender(currentUser)
+                .eventType(request.getEventType())
+                .payloadJson(request.getPayloadJson())
+                .deleted(false)
+                .build();
+
+        whiteboardEventRepository.save(event);
+        return mapToResponse(event);
+    }
+
+    @Transactional(readOnly = true)
+    public List<WhiteboardEventResponse> history(Long liveSessionId, User currentUser) {
+        LiveSession liveSession = liveSessionRepository.findById(liveSessionId)
+                .orElseThrow(() -> new RuntimeException("Live session not found"));
+
+        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
+                        liveSession.getLessonSchedule().getRoom().getId(),
+                        currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("Access denied"));
+
+        return whiteboardEventRepository.findAllByLiveSessionIdAndDeletedFalseOrderByIdAsc(liveSessionId)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    private WhiteboardEventResponse mapToResponse(WhiteboardEvent event) {
+        return WhiteboardEventResponse.builder()
+                .id(event.getId())
+                .liveSessionId(event.getLiveSession().getId())
+                .senderId(event.getSender().getId())
+                .senderName(event.getSender().getFullName())
+                .eventType(event.getEventType())
+                .payloadJson(event.getPayloadJson())
+                .createdAt(event.getDatetimeCreated())
+                .build();
+    }
+}
