@@ -10,6 +10,7 @@ import com.example.onlinetalaba.entity.Role;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.enums.AuthRoleName;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LogProgressRepository;
 import com.example.onlinetalaba.repository.RoleRepository;
 import com.example.onlinetalaba.repository.UserRepository;
@@ -223,7 +224,7 @@ public class AuthService {
             roleName = AppRoleName.USER;
         }
         return roleRepository.findByAppRoleName(roleName)
-                .orElseThrow(() -> new RuntimeException("Role not found: " + roleName));
+                .orElseThrow(() -> new NotFoundException("Role not found: " + roleName));
     }
 
     @Transactional

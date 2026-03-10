@@ -5,6 +5,8 @@ import com.example.onlinetalaba.dto.live.HandRaiseResponse;
 import com.example.onlinetalaba.entity.*;
 import com.example.onlinetalaba.enums.HandRaiseStatus;
 import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.handler.ForbiddenException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.HandRaiseRepository;
 import com.example.onlinetalaba.repository.LiveSessionRepository;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
@@ -26,12 +28,12 @@ public class HandRaiseService {
     @Transactional
     public HandRaiseResponse raiseHand(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
-                .orElseThrow(() -> new RuntimeException("Live session not found"));
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         HandRaise handRaise = handRaiseRepository
                 .findByLiveSessionIdAndUserIdAndActiveTrue(liveSessionId, currentUser.getId())
@@ -56,19 +58,19 @@ public class HandRaiseService {
     @Transactional
     public HandRaiseResponse decide(HandRaiseDecisionRequest request, User currentUser) {
         HandRaise handRaise = handRaiseRepository.findById(request.getHandRaiseId())
-                .orElseThrow(() -> new RuntimeException("Hand raise not found"));
+                .orElseThrow(() -> new NotFoundException("Hand raise not found"));
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         handRaise.getLiveSession().getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         boolean canModerate = member.getRole() == RoomMemberRole.OWNER
                 || member.getRole() == RoomMemberRole.TEACHER
                 || member.isCanManageRoom();
 
         if (!canModerate) {
-            throw new RuntimeException("You do not have permission to process hand raises");
+            throw new ForbiddenException("You do not have permission to process hand raises");
         }
 
         handRaise.setStatus(request.getStatus());
@@ -83,12 +85,12 @@ public class HandRaiseService {
     @Transactional(readOnly = true)
     public List<HandRaiseResponse> list(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
-                .orElseThrow(() -> new RuntimeException("Live session not found"));
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         return handRaiseRepository.findAllByLiveSessionIdAndActiveTrueOrderByRequestedAtAsc(liveSessionId)
                 .stream()

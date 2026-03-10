@@ -90,4 +90,4 @@ app:
     url: http://livekit:7880
 
   firebase:
-    config-path: firebase/onlinetalaba-eef62-firebase-adminsdk-fbsvc-26cc1ef961.json
+    config-path: ${FIREBASE_CONFIG_PATH:src/main/resources/firebase/onlinetalaba-eef62-firebase-adminsdk-fbsvc-26cc1ef961.json}

@@ -9,6 +9,8 @@ import com.example.onlinetalaba.entity.Room;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.handler.ForbiddenException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LibraryMaterialRepository;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
 import com.example.onlinetalaba.repository.RoomRepository;
@@ -36,15 +38,15 @@ public class LibraryService {
                                                 User currentUser) throws IOException {
 
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new NotFoundException("Room not found"));
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         if (!(member.getRole() == RoomMemberRole.OWNER
                 || member.getRole() == RoomMemberRole.TEACHER
                 || member.isCanUploadMaterials())) {
-            throw new RuntimeException("You do not have permission to upload materials");
+            throw new ForbiddenException("You do not have permission to upload materials");
         }
 
         LibraryMaterial material = LibraryMaterial.builder()
@@ -68,7 +70,7 @@ public class LibraryService {
 
     public List<LibraryMaterialResponse> getAllByRoom(Long roomId, User currentUser) {
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         return libraryMaterialRepository.findAllByRoomIdAndActiveTrue(roomId)
                 .stream()
@@ -78,13 +80,13 @@ public class LibraryService {
 
     public LibraryMaterialResponse getById(Long roomId, Long materialId, User currentUser) {
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         LibraryMaterial material = libraryMaterialRepository.findById(materialId)
-                .orElseThrow(() -> new RuntimeException("Library material not found"));
+                .orElseThrow(() -> new NotFoundException("Library material not found"));
 
         if (!material.getRoom().getId().equals(roomId) || !material.isActive()) {
-            throw new RuntimeException("Library material not found in this room");
+            throw new NotFoundException("Library material not found in this room");
         }
 
         return toResponse(material);
@@ -92,14 +94,14 @@ public class LibraryService {
 
     public void deleteMaterial(Long roomId, Long materialId, User currentUser) throws IOException {
         LibraryMaterial material = libraryMaterialRepository.findById(materialId)
-                .orElseThrow(() -> new RuntimeException("Library material not found"));
+                .orElseThrow(() -> new NotFoundException("Library material not found"));
 
         if (!material.getRoom().getId().equals(roomId)) {
-            throw new RuntimeException("Library material not found in this room");
+            throw new NotFoundException("Library material not found in this room");
         }
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         boolean canDelete = material.getUploadedBy().getId().equals(currentUser.getId())
                 || member.getRole() == RoomMemberRole.OWNER
@@ -107,7 +109,7 @@ public class LibraryService {
                 || member.isCanUploadMaterials();
 
         if (!canDelete) {
-            throw new RuntimeException("You do not have permission to delete this material");
+            throw new ForbiddenException("You do not have permission to delete this material");
         }
 
         attachmentService.deleteAttachmentByLibraryMaterial(material);

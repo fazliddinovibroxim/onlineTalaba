@@ -7,6 +7,8 @@ import com.example.onlinetalaba.entity.LessonSchedule;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.LessonCommentType;
+import com.example.onlinetalaba.handler.ForbiddenException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LessonCommentMessageRepository;
 import com.example.onlinetalaba.repository.LessonScheduleRepository;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
@@ -27,14 +29,14 @@ public class LessonCommentService {
     @Transactional
     public LessonCommentResponse send(LessonCommentRequest request, User currentUser) {
         LessonSchedule lesson = lessonScheduleRepository.findById(request.getLessonScheduleId())
-                .orElseThrow(() -> new RuntimeException("Lesson schedule not found"));
+                .orElseThrow(() -> new NotFoundException("Lesson schedule not found"));
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         lesson.getRoom().getId(), currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         if (!member.isActive()) {
-            throw new RuntimeException("Inactive room member");
+            throw new ForbiddenException("Inactive room member");
         }
 
         LessonCommentMessage message = LessonCommentMessage.builder()
@@ -54,10 +56,10 @@ public class LessonCommentService {
     @Transactional(readOnly = true)
     public List<LessonCommentResponse> getLessonComments(Long lessonScheduleId, User currentUser) {
         LessonSchedule lesson = lessonScheduleRepository.findById(lessonScheduleId)
-                .orElseThrow(() -> new RuntimeException("Lesson schedule not found"));
+                .orElseThrow(() -> new NotFoundException("Lesson schedule not found"));
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(lesson.getRoom().getId(), currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         return lessonCommentMessageRepository.findAllByLessonScheduleIdAndDeletedFalseOrderByIdAsc(lessonScheduleId)
                 .stream()

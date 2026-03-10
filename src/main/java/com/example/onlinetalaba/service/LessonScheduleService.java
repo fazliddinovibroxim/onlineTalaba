@@ -7,6 +7,9 @@ import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.LessonStatus;
 import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.handler.BadRequestException;
+import com.example.onlinetalaba.handler.ForbiddenException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LessonScheduleRepository;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
 import com.example.onlinetalaba.repository.RoomRepository;
@@ -25,19 +28,19 @@ public class LessonScheduleService {
     @Transactional
     public void create(Long roomId, LessonScheduleRequest request, User currentUser) {
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new NotFoundException("Room not found"));
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         if (!(member.getRole() == RoomMemberRole.OWNER
                 || member.getRole() == RoomMemberRole.TEACHER
                 || member.isCanScheduleLesson())) {
-            throw new RuntimeException("You do not have permission to schedule lesson");
+            throw new ForbiddenException("You do not have permission to schedule lesson");
         }
 
         if (request.getEndTime().isBefore(request.getStartTime())) {
-            throw new RuntimeException("End time must be after start time");
+            throw new BadRequestException("End time must be after start time");
         }
 
         LessonSchedule lesson = LessonSchedule.builder()

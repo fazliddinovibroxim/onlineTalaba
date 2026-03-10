@@ -5,8 +5,10 @@ import com.example.onlinetalaba.entity.LogProgress;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.enums.AuthProvider;
+import com.example.onlinetalaba.handler.BadRequestException;
 import com.example.onlinetalaba.handler.ErrorCodes;
 import com.example.onlinetalaba.handler.ErrorMessageException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LogProgressRepository;
 import com.example.onlinetalaba.repository.RoleRepository;
 import com.example.onlinetalaba.repository.UserRepository;
@@ -35,17 +37,17 @@ public class GoogleAuthService {
             token = verifier.verify(idToken);
             logProgressRepository.save(new LogProgress(idToken, "GOOGLE_AUTH", "TAKEN ToKeN"));
         } catch (Exception e) {
-            throw new RuntimeException("Invalid Google token");
+            throw new BadRequestException("Invalid Google token");
         }
 
         if (token == null) {
-            throw new RuntimeException("Google token is invalid");
+            throw new BadRequestException("Google token is invalid");
         }
 
         GoogleIdToken.Payload payload = token.getPayload();
 
         if (!payload.getEmailVerified()) {
-            throw new RuntimeException("Google email not verified");
+            throw new BadRequestException("Google email not verified");
         }
         String email = payload.getEmail();
         String fullName = (String) payload.get("name");
@@ -75,7 +77,7 @@ public class GoogleAuthService {
         user.setEnabled(true);
         user.setRoles(
                 roleRepository.findByAppRoleName(AppRoleName.STUDENT)
-                        .orElseThrow(() -> new RuntimeException("ROLE_USER not found"))
+                        .orElseThrow(() -> new NotFoundException("ROLE_USER not found"))
         );
         return userRepository.save(user);
     }

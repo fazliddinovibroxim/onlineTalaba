@@ -7,6 +7,10 @@ import com.example.onlinetalaba.entity.Room;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.enums.RoomVisibility;
+import com.example.onlinetalaba.handler.ConflictException;
+import com.example.onlinetalaba.handler.ForbiddenException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
 import com.example.onlinetalaba.repository.RoomRepository;
 import com.example.onlinetalaba.repository.UserRepository;
@@ -54,20 +58,20 @@ public class RoomService {
     @Transactional(readOnly = true)
     public RoomResponse getById(Long roomId) {
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new NotFoundException("Room not found"));
         return mapToResponse(room);
     }
 
     @Transactional
     public RoomResponse update(Long roomId, RoomRequest request, User currentUser) {
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new NotFoundException("Room not found"));
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         if (!(member.getRole() == RoomMemberRole.OWNER || member.isCanManageRoom())) {
-            throw new RuntimeException("You do not have permission to update this room");
+            throw new ForbiddenException("You do not have permission to update this room");
         }
 
         room.setTitle(request.getTitle());
@@ -82,10 +86,10 @@ public class RoomService {
     @Transactional
     public void delete(Long roomId, User currentUser) {
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new NotFoundException("Room not found"));
 
         if (!room.getOwner().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Only owner can delete room");
+            throw new ForbiddenException("Only owner can delete room");
         }
 
         room.setActive(false);
@@ -95,21 +99,21 @@ public class RoomService {
     @Transactional
     public void inviteMember(Long roomId, RoomInviteRequest request, User currentUser) {
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new NotFoundException("Room not found"));
 
         RoomMember inviter = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         if (!(inviter.getRole() == RoomMemberRole.OWNER || inviter.isCanInviteMembers())) {
-            throw new RuntimeException("You do not have permission to invite members");
+            throw new ForbiddenException("You do not have permission to invite members");
         }
 
         if (roomMemberRepository.existsByRoomIdAndUserId(roomId, request.getUserId())) {
-            throw new RuntimeException("User already exists in this room");
+            throw new ConflictException("User already exists in this room");
         }
 
         User invitedUser = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         RoomMember member = RoomMember.builder()
                 .room(room)
@@ -123,6 +127,38 @@ public class RoomService {
                 .build();
 
         roomMemberRepository.save(member);
+    }
+
+    @Transactional
+    public RoomResponse join(Long roomId, User currentUser) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new NotFoundException("Room not found"));
+
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
+        if (roomMemberRepository.existsByRoomIdAndUserId(roomId, currentUser.getId())) {
+            return mapToResponse(room);
+        }
+
+        if (room.getVisibility() != RoomVisibility.PUBLIC) {
+            throw new ForbiddenException("You cannot join a private room without invitation");
+        }
+
+        RoomMember member = RoomMember.builder()
+                .room(room)
+                .user(currentUser)
+                .role(RoomMemberRole.STUDENT)
+                .canManageRoom(false)
+                .canInviteMembers(false)
+                .canScheduleLesson(false)
+                .canUploadMaterials(false)
+                .active(true)
+                .build();
+
+        roomMemberRepository.save(member);
+        return mapToResponse(room);
     }
 
     private RoomResponse mapToResponse(Room room) {

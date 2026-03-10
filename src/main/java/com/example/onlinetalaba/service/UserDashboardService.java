@@ -6,6 +6,7 @@ import com.example.onlinetalaba.dto.auth.UserDto;
 import com.example.onlinetalaba.entity.Role;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.AppPermissions;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.RoleRepository;
 import com.example.onlinetalaba.repository.RoomRepository;
 import com.example.onlinetalaba.repository.UserRepository;
@@ -31,13 +32,13 @@ public class UserDashboardService {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> {
                         log.error("User not found with id={}", userId);
-                        return new RuntimeException("User not found");
+                        return new NotFoundException("User not found");
                     });
 
             Role role = roleRepository.findByAppRoleName(user.getRoles().getAppRoleName())
                     .orElseThrow(() -> {
                         log.error("Role not found for userId={} with roleName={}", userId, user.getRoles().getAppRoleName());
-                        return new RuntimeException("Role not found for user");
+                        return new NotFoundException("Role not found for user");
                     });
 
             Set<AppPermissions> appPermissions = role.getAppPermissions();
@@ -75,7 +76,7 @@ public class UserDashboardService {
             User user = userRepository.findByEmail(userY.getEmail());
             if (user == null) {
                 log.error("User not found for update with email={}", userY.getEmail());
-                throw new RuntimeException("User not found for update");
+                throw new NotFoundException("User not found for update");
             }
 
             user.setFullName(dto.getFullName());
@@ -99,7 +100,7 @@ public class UserDashboardService {
             User user = userRepository.findById(currentUser.getId())
                     .orElseThrow(() -> {
                         log.error("User not found for deletion: id={}", currentUser.getId());
-                        return new RuntimeException("User not found");
+                        return new NotFoundException("User not found");
                     });
 
             // Soft delete amali

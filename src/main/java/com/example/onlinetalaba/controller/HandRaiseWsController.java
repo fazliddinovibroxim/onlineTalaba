@@ -4,6 +4,7 @@ import com.example.onlinetalaba.config.StompPrincipal;
 import com.example.onlinetalaba.dto.live.HandRaiseDecisionRequest;
 import com.example.onlinetalaba.dto.live.HandRaiseResponse;
 import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.handler.UnauthorizedException;
 import com.example.onlinetalaba.service.HandRaiseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -23,7 +24,7 @@ public class HandRaiseWsController {
     @MessageMapping("/live.handraise.raise")
     public void raise(@Payload Long liveSessionId, Principal principal) {
         if (!(principal instanceof StompPrincipal stompPrincipal)) {
-            throw new RuntimeException("Unauthorized websocket user");
+            throw new UnauthorizedException("Unauthorized websocket user");
         }
 
         User currentUser = stompPrincipal.getUser();
@@ -38,7 +39,7 @@ public class HandRaiseWsController {
     @MessageMapping("/live.handraise.decision")
     public void decide(@Payload HandRaiseDecisionRequest request, Principal principal) {
         if (!(principal instanceof StompPrincipal stompPrincipal)) {
-            throw new RuntimeException("Unauthorized websocket user");
+            throw new UnauthorizedException("Unauthorized websocket user");
         }
 
         User currentUser = stompPrincipal.getUser();

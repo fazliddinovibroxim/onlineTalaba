@@ -17,4 +17,9 @@ public class ErrorMessageException extends RuntimeException {
         this.errorCode = errorCode;
         this.userMessage = null;
     }
+
+    @Override
+    public String getMessage() {
+        return message;
+    }
 }

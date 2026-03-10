@@ -6,6 +6,8 @@ import com.example.onlinetalaba.entity.LiveSession;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.entity.WhiteboardEvent;
+import com.example.onlinetalaba.handler.ForbiddenException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LiveSessionRepository;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
 import com.example.onlinetalaba.repository.WhiteboardEventRepository;
@@ -26,15 +28,15 @@ public class WhiteboardEventService {
     @Transactional
     public WhiteboardEventResponse saveEvent(WhiteboardEventRequest request, User currentUser) {
         LiveSession liveSession = liveSessionRepository.findById(request.getLiveSessionId())
-                .orElseThrow(() -> new RuntimeException("Live session not found"));
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         liveSession.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         if (!member.isActive()) {
-            throw new RuntimeException("Inactive room member");
+            throw new ForbiddenException("Inactive room member");
         }
 
         WhiteboardEvent event = WhiteboardEvent.builder()
@@ -52,12 +54,12 @@ public class WhiteboardEventService {
     @Transactional(readOnly = true)
     public List<WhiteboardEventResponse> history(Long liveSessionId, User currentUser) {
         LiveSession liveSession = liveSessionRepository.findById(liveSessionId)
-                .orElseThrow(() -> new RuntimeException("Live session not found"));
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         liveSession.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         return whiteboardEventRepository.findAllByLiveSessionIdAndDeletedFalseOrderByIdAsc(liveSessionId)
                 .stream()

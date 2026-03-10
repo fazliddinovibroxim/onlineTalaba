@@ -2,6 +2,7 @@ package com.example.onlinetalaba.service;
 
 import com.example.onlinetalaba.dto.auth.UserResponse;
 import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,7 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> {
                     log.error("User not found with id: {}", id);
-                    return new RuntimeException("User not found");
+                    return new NotFoundException("User not found");
                 });
 
         return toResponse(user);
@@ -43,7 +44,7 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> {
                     log.error("User not found for delete, id: {}", id);
-                    return new RuntimeException("User not found");
+                    return new NotFoundException("User not found");
                 });
 
         if (isDelete) {

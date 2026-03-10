@@ -4,6 +4,8 @@ import com.example.onlinetalaba.dto.live.LiveKitTokenResponse;
 import com.example.onlinetalaba.dto.live.LiveSessionResponse;
 import com.example.onlinetalaba.entity.*;
 import com.example.onlinetalaba.enums.*;
+import com.example.onlinetalaba.handler.ForbiddenException;
+import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,18 +25,18 @@ public class LiveSessionService {
     @Transactional
     public LiveSessionResponse createOrStart(Long lessonScheduleId, User currentUser) {
         LessonSchedule lesson = lessonScheduleRepository.findById(lessonScheduleId)
-                .orElseThrow(() -> new RuntimeException("Lesson schedule not found"));
+                .orElseThrow(() -> new NotFoundException("Lesson schedule not found"));
 
         RoomMember member = roomMemberRepository
                 .findByRoomIdAndUserIdAndActiveTrue(lesson.getRoom().getId(), currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         boolean canStart = member.getRole() == RoomMemberRole.OWNER
                 || member.getRole() == RoomMemberRole.TEACHER
                 || member.isCanScheduleLesson();
 
         if (!canStart) {
-            throw new RuntimeException("You do not have permission to start live session");
+            throw new ForbiddenException("You do not have permission to start live session");
         }
 
         LiveSession session = liveSessionRepository.findByLessonScheduleId(lessonScheduleId)
@@ -63,12 +65,12 @@ public class LiveSessionService {
     @Transactional(readOnly = true)
     public LiveKitTokenResponse issueToken(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
-                .orElseThrow(() -> new RuntimeException("Live session not found"));
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         String token = liveKitTokenService.createParticipantToken(
                 session.getLivekitRoomName(),
@@ -87,10 +89,10 @@ public class LiveSessionService {
     @Transactional
     public void end(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
-                .orElseThrow(() -> new RuntimeException("Live session not found"));
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
 
         if (!session.getHost().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Only host can end live session");
+            throw new ForbiddenException("Only host can end live session");
         }
 
         session.setStatus(LiveSessionStatus.ENDED);
@@ -107,12 +109,12 @@ public class LiveSessionService {
     @Transactional(readOnly = true)
     public LiveSessionResponse getByLessonSchedule(Long lessonScheduleId, User currentUser) {
         LiveSession session = liveSessionRepository.findByLessonScheduleId(lessonScheduleId)
-                .orElseThrow(() -> new RuntimeException("Live session not found"));
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Access denied"));
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
 
         return mapToResponse(session);
     }

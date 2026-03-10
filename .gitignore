@@ -4,6 +4,24 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Secrets ###
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+secrets/
+src/main/resources/firebase/
+src/main/resources/application-local.yml
+src/main/resources/application-secret.yml
+src/main/resources/application-dev.yml
+
 ### STS ###
 .apt_generated
 .classpath

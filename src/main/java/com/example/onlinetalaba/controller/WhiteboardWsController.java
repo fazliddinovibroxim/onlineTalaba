@@ -4,6 +4,7 @@ import com.example.onlinetalaba.config.StompPrincipal;
 import com.example.onlinetalaba.dto.live.WhiteboardEventRequest;
 import com.example.onlinetalaba.dto.live.WhiteboardEventResponse;
 import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.handler.UnauthorizedException;
 import com.example.onlinetalaba.service.WhiteboardEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -23,7 +24,7 @@ public class WhiteboardWsController {
     @MessageMapping("/live.whiteboard.event")
     public void sendEvent(@Payload WhiteboardEventRequest request, Principal principal) {
         if (!(principal instanceof StompPrincipal stompPrincipal)) {
-            throw new RuntimeException("Unauthorized websocket user");
+            throw new UnauthorizedException("Unauthorized websocket user");
         }
 
         User currentUser = stompPrincipal.getUser();

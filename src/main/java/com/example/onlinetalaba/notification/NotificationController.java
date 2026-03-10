@@ -1,6 +1,7 @@
 package com.example.onlinetalaba.notification;
 
 import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.handler.BadRequestException;
 import com.example.onlinetalaba.security.CurrentUser;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class NotificationController {
         try {
             return notificationService.basicSendNotification(title, body, token);
         } catch (FirebaseMessagingException e) {
-            throw new RuntimeException(e);
+            throw new BadRequestException(e.getMessage());
         }
     }
 

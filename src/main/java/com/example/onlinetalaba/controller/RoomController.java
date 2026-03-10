@@ -49,4 +49,10 @@ public class RoomController {
         roomService.inviteMember(roomId, request, currentUser);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/{roomId}/join")
+    public ResponseEntity<RoomResponse> join(@PathVariable Long roomId,
+                                             @CurrentUser User currentUser) {
+        return ResponseEntity.ok(roomService.join(roomId, currentUser));
+    }
 }
