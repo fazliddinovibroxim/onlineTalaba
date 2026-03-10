@@ -70,6 +70,24 @@ public class RoomChatService {
         return mapToResponse(message);
     }
 
+    @Transactional
+    public RoomChatMessageResponse sendFile(Long roomId, MultipartFile file, User currentUser) throws java.io.IOException {
+        Room room = getActiveRoomMemberRoom(roomId, currentUser);
+        String fileUrl = attachmentService.uploadChatFile(file);
+
+        RoomChatMessage message = RoomChatMessage.builder()
+                .room(room)
+                .sender(currentUser)
+                .content(fileUrl)
+                .messageType(ChatMessageType.FILE)
+                .edited(false)
+                .deleted(false)
+                .build();
+
+        roomChatMessageRepository.save(message);
+        return mapToResponse(message);
+    }
+
     @Transactional(readOnly = true)
     public List<RoomChatMessageResponse> getRoomMessages(Long roomId, User currentUser) {
         getActiveRoomMemberRoom(roomId, currentUser);
@@ -111,6 +129,10 @@ public class RoomChatService {
 
         if (!member.isActive()) {
             throw new ForbiddenException("Inactive room member");
+        }
+
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
         }
 
         return room;

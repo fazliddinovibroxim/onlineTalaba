@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface HandRaiseRepository extends JpaRepository<HandRaise, Long> {
     List<HandRaise> findAllByLiveSessionIdAndActiveTrueOrderByRequestedAtAsc(Long liveSessionId);
     Optional<HandRaise> findByLiveSessionIdAndUserIdAndActiveTrue(Long liveSessionId, Long userId);
+    Optional<HandRaise> findTopByLiveSessionIdAndUserIdOrderByRequestedAtDesc(Long liveSessionId, Long userId);
 }

@@ -127,7 +127,7 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(username, password)
             ).getPrincipal();
 
-            String token = jwtService.generateToken(principal.getUsername());
+            String token = jwtService.generateToken(principal.getEmail());
 
             logProgressRepository.save(
                     new LogProgress(principal.getEmail() + " login", "TIZIMGA KIRILDI", "Nothing")

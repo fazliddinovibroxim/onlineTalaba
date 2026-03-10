@@ -4,7 +4,6 @@ import com.example.onlinetalaba.dto.auth.UserDashboardResponse;
 import com.example.onlinetalaba.dto.auth.UserDto;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.security.CurrentUser;
-import com.example.onlinetalaba.service.AuthService;
 import com.example.onlinetalaba.service.UserDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +18,11 @@ public class UserDashboardController {
 
     @GetMapping("/me")
     public ResponseEntity<UserDashboardResponse> getMyDashboard(@CurrentUser User user) {
-        return ResponseEntity.ok(dashboardService.getUserDashboard(user.getId()));
+        return ResponseEntity.ok(dashboardService.getUserDashboard(user));
     }
 
     @PutMapping("/update")
-    public ResponseEntity<User> update(@CurrentUser User user, UserDto dto){
+    public ResponseEntity<User> update(@CurrentUser User user, @RequestBody UserDto dto){
         return ResponseEntity.ok(dashboardService.update(user, dto));
     }
 

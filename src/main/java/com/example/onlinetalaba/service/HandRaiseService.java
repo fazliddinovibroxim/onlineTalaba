@@ -30,6 +30,10 @@ public class HandRaiseService {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
 
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
@@ -60,6 +64,10 @@ public class HandRaiseService {
         HandRaise handRaise = handRaiseRepository.findById(request.getHandRaiseId())
                 .orElseThrow(() -> new NotFoundException("Hand raise not found"));
 
+        if (!handRaise.getLiveSession().getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         handRaise.getLiveSession().getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
@@ -86,6 +94,10 @@ public class HandRaiseService {
     public List<HandRaiseResponse> list(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),

@@ -1,6 +1,7 @@
 package com.example.onlinetalaba.service;
 
 import com.example.onlinetalaba.dto.schedule.LessonScheduleRequest;
+import com.example.onlinetalaba.dto.schedule.LessonScheduleResponse;
 import com.example.onlinetalaba.entity.LessonSchedule;
 import com.example.onlinetalaba.entity.Room;
 import com.example.onlinetalaba.entity.RoomMember;
@@ -17,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class LessonScheduleService {
@@ -29,6 +32,10 @@ public class LessonScheduleService {
     public void create(Long roomId, LessonScheduleRequest request, User currentUser) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
+
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
@@ -57,5 +64,40 @@ public class LessonScheduleService {
                 .build();
 
         lessonScheduleRepository.save(lesson);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LessonScheduleResponse> getAllByRoom(Long roomId, User currentUser) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new NotFoundException("Room not found"));
+
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
+        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
+
+        return lessonScheduleRepository.findAllByRoomIdOrderByStartTimeAsc(roomId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private LessonScheduleResponse toResponse(LessonSchedule lesson) {
+        return LessonScheduleResponse.builder()
+                .id(lesson.getId())
+                .roomId(lesson.getRoom().getId())
+                .teacherId(lesson.getTeacher().getId())
+                .teacherName(lesson.getTeacher().getFullName())
+                .title(lesson.getTitle())
+                .description(lesson.getDescription())
+                .startTime(lesson.getStartTime())
+                .endTime(lesson.getEndTime())
+                .status(lesson.getStatus())
+                .whiteboardEnabled(lesson.isWhiteboardEnabled())
+                .liveCommentsEnabled(lesson.isLiveCommentsEnabled())
+                .liveVoiceQuestionsEnabled(lesson.isLiveVoiceQuestionsEnabled())
+                .build();
     }
 }

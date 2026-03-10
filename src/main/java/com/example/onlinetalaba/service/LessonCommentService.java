@@ -31,6 +31,10 @@ public class LessonCommentService {
         LessonSchedule lesson = lessonScheduleRepository.findById(request.getLessonScheduleId())
                 .orElseThrow(() -> new NotFoundException("Lesson schedule not found"));
 
+        if (!lesson.getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         lesson.getRoom().getId(), currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
@@ -57,6 +61,10 @@ public class LessonCommentService {
     public List<LessonCommentResponse> getLessonComments(Long lessonScheduleId, User currentUser) {
         LessonSchedule lesson = lessonScheduleRepository.findById(lessonScheduleId)
                 .orElseThrow(() -> new NotFoundException("Lesson schedule not found"));
+
+        if (!lesson.getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(lesson.getRoom().getId(), currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));

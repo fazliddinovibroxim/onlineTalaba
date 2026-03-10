@@ -14,7 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -77,7 +79,14 @@ public class NotificationService {
     @Async("NotificationTaskExecutor")
     public CompletableFuture<ResponseEntity<?>> sendAsyncNotification(Notification notification) {
         Long userId = notification.getUser().getId();
-        FCM maybe = fcmRepository.findByUserId(userId).orElseThrow(() -> new ErrorMessageException("Token not found", ErrorCodes.NotFound));
+        Optional<FCM> maybeToken = fcmRepository.findByUserId(userId);
+        if (maybeToken.isEmpty()) {
+            notification.setStatus("NO_TOKEN");
+            notificationRepository.save(notification);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        FCM maybe = maybeToken.get();
 
         if (maybe.getFcmToken() == null) {
             notification.setStatus("NO_TOKEN");
@@ -91,10 +100,12 @@ public class NotificationService {
                     .setNotification(com.google.firebase.messaging.Notification.builder()
                             .setTitle(notification.getTitle())
                             .setBody(notification.getBody())
-                            .build())
+                        .build())
                     .build();
 
             String response = FirebaseMessaging.getInstance().send(message);
+            notification.setStatus("SENT");
+            notificationRepository.save(notification);
             return CompletableFuture.completedFuture(ResponseEntity.ok().body(response));
         } catch (Exception ex) {
             notification.setStatus("FAILED");
@@ -104,6 +115,26 @@ public class NotificationService {
         notificationRepository.save(notification);
         return CompletableFuture.completedFuture(null);
 
+    }
+
+    @Transactional
+    public Notification createAndDispatch(User user, String title, String body) {
+        Notification notification = Notification.builder()
+                .user(user)
+                .title(title)
+                .body(body)
+                .status("PENDING")
+                .createdAt(LocalDate.now())
+                .isRead(false)
+                .build();
+        notificationRepository.save(notification);
+        sendAsyncNotification(notification);
+        return notification;
+    }
+
+    @Transactional
+    public void createAndDispatch(List<User> users, String title, String body) {
+        users.forEach(user -> createAndDispatch(user, title, body));
     }
 
     public CompletableFuture<ResponseEntity<String>> basicSendNotification(String title, String body, String token) throws FirebaseMessagingException {

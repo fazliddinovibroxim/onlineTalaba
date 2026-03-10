@@ -70,6 +70,10 @@ public class RoomService {
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         if (!(member.getRole() == RoomMemberRole.OWNER || member.isCanManageRoom())) {
             throw new ForbiddenException("You do not have permission to update this room");
         }
@@ -103,6 +107,10 @@ public class RoomService {
 
         RoomMember inviter = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
+
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
 
         if (!(inviter.getRole() == RoomMemberRole.OWNER || inviter.isCanInviteMembers())) {
             throw new ForbiddenException("You do not have permission to invite members");

@@ -30,6 +30,10 @@ public class WhiteboardEventService {
         LiveSession liveSession = liveSessionRepository.findById(request.getLiveSessionId())
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
 
+        if (!liveSession.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         liveSession.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
@@ -55,6 +59,10 @@ public class WhiteboardEventService {
     public List<WhiteboardEventResponse> history(Long liveSessionId, User currentUser) {
         LiveSession liveSession = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!liveSession.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         liveSession.getLessonSchedule().getRoom().getId(),

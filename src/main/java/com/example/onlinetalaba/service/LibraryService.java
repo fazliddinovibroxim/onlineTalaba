@@ -40,6 +40,10 @@ public class LibraryService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
 
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 
@@ -69,6 +73,13 @@ public class LibraryService {
     }
 
     public List<LibraryMaterialResponse> getAllByRoom(Long roomId, User currentUser) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new NotFoundException("Room not found"));
+
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 
@@ -79,6 +90,13 @@ public class LibraryService {
     }
 
     public LibraryMaterialResponse getById(Long roomId, Long materialId, User currentUser) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new NotFoundException("Room not found"));
+
+        if (!room.isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 
@@ -98,6 +116,10 @@ public class LibraryService {
 
         if (!material.getRoom().getId().equals(roomId)) {
             throw new NotFoundException("Library material not found in this room");
+        }
+
+        if (!material.getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
         }
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())

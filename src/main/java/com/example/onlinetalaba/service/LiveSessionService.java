@@ -20,12 +20,17 @@ public class LiveSessionService {
     private final LessonScheduleRepository lessonScheduleRepository;
     private final LiveSessionRepository liveSessionRepository;
     private final RoomMemberRepository roomMemberRepository;
+    private final HandRaiseRepository handRaiseRepository;
     private final LiveKitTokenService liveKitTokenService;
 
     @Transactional
     public LiveSessionResponse createOrStart(Long lessonScheduleId, User currentUser) {
         LessonSchedule lesson = lessonScheduleRepository.findById(lessonScheduleId)
                 .orElseThrow(() -> new NotFoundException("Lesson schedule not found"));
+
+        if (!lesson.getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
 
         RoomMember member = roomMemberRepository
                 .findByRoomIdAndUserIdAndActiveTrue(lesson.getRoom().getId(), currentUser.getId())
@@ -67,15 +72,22 @@ public class LiveSessionService {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 
+        boolean canPublish = canPublishAudio(session, member, currentUser);
+
         String token = liveKitTokenService.createParticipantToken(
                 session.getLivekitRoomName(),
                 currentUser.getId().toString(),
-                currentUser.getFullName()
+                currentUser.getFullName(),
+                canPublish
         );
 
         return LiveKitTokenResponse.builder()
@@ -83,6 +95,7 @@ public class LiveSessionService {
                 .token(token)
                 .roomName(session.getLivekitRoomName())
                 .liveSessionId(session.getId())
+                .canPublish(canPublish)
                 .build();
     }
 
@@ -90,6 +103,10 @@ public class LiveSessionService {
     public void end(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
 
         if (!session.getHost().getId().equals(currentUser.getId())) {
             throw new ForbiddenException("Only host can end live session");
@@ -111,6 +128,10 @@ public class LiveSessionService {
         LiveSession session = liveSessionRepository.findByLessonScheduleId(lessonScheduleId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
 
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
@@ -131,5 +152,21 @@ public class LiveSessionService {
                 .startedAt(session.getStartedAt())
                 .endedAt(session.getEndedAt())
                 .build();
+    }
+
+    private boolean canPublishAudio(LiveSession session, RoomMember member, User currentUser) {
+        if (member.getRole() == RoomMemberRole.OWNER
+                || member.getRole() == RoomMemberRole.TEACHER
+                || member.isCanManageRoom()) {
+            return true;
+        }
+
+        if (!session.getLessonSchedule().isLiveVoiceQuestionsEnabled()) {
+            return false;
+        }
+
+        return handRaiseRepository.findTopByLiveSessionIdAndUserIdOrderByRequestedAtDesc(session.getId(), currentUser.getId())
+                .map(handRaise -> handRaise.getStatus() == HandRaiseStatus.APPROVED)
+                .orElse(false);
     }
 }

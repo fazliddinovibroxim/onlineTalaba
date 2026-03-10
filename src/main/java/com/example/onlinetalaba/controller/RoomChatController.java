@@ -36,6 +36,15 @@ public class RoomChatController {
         return ResponseEntity.ok(roomChatService.sendImage(roomId, file, currentUser));
     }
 
+    @PostMapping(value = "/files", consumes = {"multipart/form-data"})
+    public ResponseEntity<RoomChatMessageResponse> sendFile(
+            @PathVariable Long roomId,
+            @RequestPart("file") MultipartFile file,
+            @CurrentUser User currentUser
+    ) throws java.io.IOException {
+        return ResponseEntity.ok(roomChatService.sendFile(roomId, file, currentUser));
+    }
+
     @GetMapping
     public ResponseEntity<List<RoomChatMessageResponse>> getMessages(
             @PathVariable Long roomId,

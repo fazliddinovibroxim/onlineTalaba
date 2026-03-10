@@ -48,12 +48,20 @@ public class AttachmentService {
     }
 
     public String uploadChatImage(MultipartFile file) throws IOException {
+        return uploadChatFile(file, true);
+    }
+
+    public String uploadChatFile(MultipartFile file) throws IOException {
+        return uploadChatFile(file, false);
+    }
+
+    private String uploadChatFile(MultipartFile file, boolean imageOnly) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File is empty");
         }
 
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+        if (imageOnly && (contentType == null || !contentType.toLowerCase().startsWith("image/"))) {
             throw new BadRequestException("Only image files are allowed");
         }
 

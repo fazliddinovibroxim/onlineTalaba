@@ -10,4 +10,5 @@ public class LiveKitTokenResponse {
     private String token;
     private String roomName;
     private Long liveSessionId;
+    private boolean canPublish;
 }

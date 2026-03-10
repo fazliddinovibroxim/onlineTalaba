@@ -47,4 +47,6 @@ public class LessonSchedule extends BaseEntity {
 
     @Column(nullable = false)
     private boolean liveVoiceQuestionsEnabled = true;
+
+    private LocalDateTime reminderSentAt;
 }
