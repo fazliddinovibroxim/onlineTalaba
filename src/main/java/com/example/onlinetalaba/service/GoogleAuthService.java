@@ -62,6 +62,7 @@ public class GoogleAuthService {
 
         return new ResponseLoginDto(
                 user.getFullName(),
+                user.getUsername(),
                 user.getEmail(),
                 jwt,
                 user.getRoles().getAppRoleName()
@@ -100,6 +101,7 @@ public class GoogleAuthService {
 
             return new ResponseLoginDto(
                     user.getFullName(),
+                    user.getUsername(),
                     user.getEmail(),
                     token,
                     user.getRoles().getAppRoleName()

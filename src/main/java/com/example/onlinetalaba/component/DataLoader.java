@@ -4,6 +4,7 @@ import com.example.onlinetalaba.entity.Role;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.AppPermissions;
 import com.example.onlinetalaba.enums.AppRoleName;
+import com.example.onlinetalaba.enums.UserGender;
 import com.example.onlinetalaba.repository.RoleRepository;
 import com.example.onlinetalaba.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,8 @@ public class DataLoader implements ApplicationRunner {
                 authUserAdmin.setPassword(passwordEncoder.encode("admin321"));
                 authUserAdmin.setFullName("Ibrohim Fazliddinov");
                 authUserAdmin.setPhoneNumber("998932003316");
+                authUserAdmin.setAddress("Namangan viloyati");
+                authUserAdmin.setGender(UserGender.MALE);
                 userRepository.save(authUserAdmin);
             }
 

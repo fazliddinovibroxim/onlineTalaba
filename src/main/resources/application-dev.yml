@@ -58,7 +58,6 @@ spring:
   devsms:
     token: f2a210dab7f931a99a35de5a914eb0d6dc84a0673213fd1fe7501fe69c87a774
 
-
 server:
   port: 8080
 
@@ -91,3 +90,5 @@ app:
 
   firebase:
     config-path: ${FIREBASE_CONFIG_PATH:src/main/resources/firebase/onlinetalaba-eef62-firebase-adminsdk-fbsvc-26cc1ef961.json}
+
+

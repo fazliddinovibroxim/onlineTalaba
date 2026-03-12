@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class ResponseLoginDto {
-    private String username;
+    private String fullName;
+    private String userName;
     private String email;
     private String token;
     private AppRoleName appRole;

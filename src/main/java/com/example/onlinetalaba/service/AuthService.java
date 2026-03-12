@@ -127,14 +127,15 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(username, password)
             ).getPrincipal();
 
-            String token = jwtService.generateToken(principal.getEmail());
+            String token = jwtService.generateToken(principal.getUsername());
 
             logProgressRepository.save(
-                    new LogProgress(principal.getEmail() + " login", "TIZIMGA KIRILDI", "Nothing")
+                    new LogProgress(principal.getUsername() + " login", "TIZIMGA KIRILDI", "Nothing")
             );
 
             return new ResponseLoginDto(
                     principal.getFullName(),
+                    principal.getUsername(),
                     principal.getEmail(),
                     token,
                     principal.getRoles().getAppRoleName()
