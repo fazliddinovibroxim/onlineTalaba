@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface LessonScheduleRepository extends JpaRepository<LessonSchedule, Long> {
     List<LessonSchedule> findAllByRoomIdOrderByStartTimeAsc(Long roomId);
+    List<LessonSchedule> findTop3ByRoomIdAndStartTimeAfterOrderByStartTimeAsc(Long roomId, LocalDateTime after);
+    List<LessonSchedule> findTop1ByRoomIdOrderByStartTimeDesc(Long roomId);
     List<LessonSchedule> findAllByRoomIdInAndStartTimeAfterOrderByStartTimeAsc(Collection<Long> roomIds, LocalDateTime after);
     List<LessonSchedule> findTop10ByStartTimeAfterOrderByStartTimeAsc(LocalDateTime after);
     List<LessonSchedule> findAllByStatusAndStartTimeBetweenAndReminderSentAtIsNull(
@@ -17,5 +19,7 @@ public interface LessonScheduleRepository extends JpaRepository<LessonSchedule, 
             LocalDateTime from,
             LocalDateTime to
     );
+    long countByRoomIdAndStatus(Long roomId, LessonStatus status);
+    long countByRoomIdAndStatusAndStartTimeBetween(Long roomId, LessonStatus status, LocalDateTime start, LocalDateTime end);
     long countByStatus(LessonStatus status);
 }

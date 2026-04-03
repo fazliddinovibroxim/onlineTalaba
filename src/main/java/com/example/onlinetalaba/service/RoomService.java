@@ -6,17 +6,23 @@ import com.example.onlinetalaba.dto.room.RoomResponse;
 import com.example.onlinetalaba.entity.Room;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.enums.AppRoleName;
+import com.example.onlinetalaba.enums.RoomJoinRequestStatus;
 import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.enums.RoomVisibility;
 import com.example.onlinetalaba.handler.ConflictException;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
+import com.example.onlinetalaba.repository.LiveSessionRepository;
+import com.example.onlinetalaba.repository.RoomJoinRequestRepository;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
 import com.example.onlinetalaba.repository.RoomRepository;
 import com.example.onlinetalaba.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +31,8 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final UserRepository userRepository;
+    private final LiveSessionRepository liveSessionRepository;
+    private final RoomJoinRequestRepository roomJoinRequestRepository;
 
     @Transactional
     public RoomResponse create(RoomRequest request, User currentUser) {
@@ -52,14 +60,15 @@ public class RoomService {
 
         roomMemberRepository.save(ownerMember);
 
-        return mapToResponse(room);
+        return mapToResponse(room, currentUser);
     }
 
     @Transactional(readOnly = true)
-    public RoomResponse getById(Long roomId) {
+    public RoomResponse getById(Long roomId, User currentUser) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
-        return mapToResponse(room);
+        validateViewAccess(room, currentUser);
+        return mapToResponse(room, currentUser);
     }
 
     @Transactional
@@ -84,7 +93,7 @@ public class RoomService {
         room.setVisibility(request.getVisibility());
 
         roomRepository.save(room);
-        return mapToResponse(room);
+        return mapToResponse(room, currentUser);
     }
 
     @Transactional
@@ -147,7 +156,7 @@ public class RoomService {
         }
 
         if (roomMemberRepository.existsByRoomIdAndUserId(roomId, currentUser.getId())) {
-            return mapToResponse(room);
+            return mapToResponse(room, currentUser);
         }
 
         if (room.getVisibility() != RoomVisibility.PUBLIC) {
@@ -166,10 +175,16 @@ public class RoomService {
                 .build();
 
         roomMemberRepository.save(member);
-        return mapToResponse(room);
+        return mapToResponse(room, currentUser);
     }
 
-    private RoomResponse mapToResponse(Room room) {
+    private RoomResponse mapToResponse(Room room, User currentUser) {
+        Optional<RoomMember> myMembership = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId());
+        RoomMember member = myMembership.orElse(null);
+
+        boolean canModerateJoinRequests = member != null
+                && (member.getRole() == RoomMemberRole.OWNER || member.getRole() == RoomMemberRole.TEACHER);
+
         return RoomResponse.builder()
                 .id(room.getId())
                 .title(room.getTitle())
@@ -178,6 +193,41 @@ public class RoomService {
                 .visibility(room.getVisibility())
                 .ownerId(room.getOwner().getId())
                 .ownerName(room.getOwner().getFullName())
+                .active(room.isActive())
+                .memberCount(roomMemberRepository.countByRoomIdAndActiveTrue(room.getId()))
+                .liveNow(liveSessionRepository.existsByLessonScheduleRoomIdAndActiveTrue(room.getId()))
+                .pendingJoinRequestCount(canModerateJoinRequests
+                        ? roomJoinRequestRepository.countByRoomIdAndStatus(room.getId(), RoomJoinRequestStatus.PENDING)
+                        : 0)
+                .createdAt(room.getDatetimeCreated())
+                .updatedAt(room.getDatetimeUpdated())
+                .member(member != null)
+                .myRole(member == null ? null : member.getRole())
+                .canManageRoom(member != null && (member.getRole() == RoomMemberRole.OWNER || member.isCanManageRoom()))
+                .canInviteMembers(member != null && (member.getRole() == RoomMemberRole.OWNER || member.isCanInviteMembers()))
+                .canScheduleLesson(member != null && (member.getRole() == RoomMemberRole.OWNER || member.isCanScheduleLesson()))
+                .canUploadMaterials(member != null && (member.getRole() == RoomMemberRole.OWNER || member.isCanUploadMaterials()))
+                .myPendingJoinRequest(roomJoinRequestRepository.existsByRoomIdAndRequesterIdAndStatus(
+                        room.getId(),
+                        currentUser.getId(),
+                        RoomJoinRequestStatus.PENDING
+                ))
                 .build();
+    }
+
+    private void validateViewAccess(Room room, User currentUser) {
+        if (room.getVisibility() == RoomVisibility.PUBLIC) {
+            return;
+        }
+
+        AppRoleName role = currentUser.getRoles().getAppRoleName();
+        if (role == AppRoleName.SUPER_ADMIN || role == AppRoleName.ADMIN) {
+            return;
+        }
+
+        boolean isMember = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId()).isPresent();
+        if (!isMember) {
+            throw new ForbiddenException("You do not have access to this private room");
+        }
     }
 }

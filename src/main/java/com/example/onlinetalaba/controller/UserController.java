@@ -4,12 +4,14 @@ import com.example.onlinetalaba.dto.auth.UserResponse;
 import com.example.onlinetalaba.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
 @RequiredArgsConstructor
 public class UserController {
 

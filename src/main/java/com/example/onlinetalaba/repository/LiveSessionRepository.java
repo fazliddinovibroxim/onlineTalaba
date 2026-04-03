@@ -13,5 +13,7 @@ public interface LiveSessionRepository extends JpaRepository<LiveSession, Long> 
     List<LiveSession> findAllByLessonScheduleRoomIdInAndActiveTrue(Collection<Long> roomIds);
     List<LiveSession> findAllByActiveTrue();
     List<LiveSession> findAllByActiveTrueAndLessonScheduleRoomVisibility(RoomVisibility visibility);
+    boolean existsByLessonScheduleRoomIdAndActiveTrue(Long roomId);
+    Optional<LiveSession> findTopByLessonScheduleRoomIdOrderByDatetimeUpdatedDesc(Long roomId);
     long countByActiveTrue();
 }

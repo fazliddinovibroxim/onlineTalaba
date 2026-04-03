@@ -24,8 +24,9 @@ public class RoomController {
     }
 
     @GetMapping("/{roomId}")
-    public ResponseEntity<RoomResponse> getById(@PathVariable Long roomId) {
-        return ResponseEntity.ok(roomService.getById(roomId));
+    public ResponseEntity<RoomResponse> getById(@PathVariable Long roomId,
+                                                @CurrentUser User currentUser) {
+        return ResponseEntity.ok(roomService.getById(roomId, currentUser));
     }
 
     @PutMapping("/{roomId}")

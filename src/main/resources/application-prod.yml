@@ -59,6 +59,7 @@ spring:
 
 server:
   port: ${APP_PORT}
+  forward-headers-strategy: framework
 
 custom_app_config:
 
