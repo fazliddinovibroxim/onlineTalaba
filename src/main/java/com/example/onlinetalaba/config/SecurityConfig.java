@@ -63,8 +63,8 @@ public class SecurityConfig {
                 "http://localhost:8080",
                 "http://localhost:5173",
                 "http://localhost:3000",
-                "https://onlinetalaba.com",
-                "https://www.onlinetalaba.com"
+                "https://pulhisob.com",
+                "https://www.pulhisob.com"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
