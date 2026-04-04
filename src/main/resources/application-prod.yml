@@ -61,6 +61,12 @@ server:
   port: ${APP_PORT}
   forward-headers-strategy: framework
 
+springdoc:
+  api-docs:
+    path: /api2/v3/api-docs
+  swagger-ui:
+    path: /api2/swagger-ui.html
+
 custom_app_config:
 
   baseUrl: ${BASE_URL}
