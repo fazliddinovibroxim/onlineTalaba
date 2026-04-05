@@ -1,6 +1,6 @@
 spring:
   application:
-    name: furniture-project
+    name: talaba-project
   datasource:
     url: ${DATASOURCE_URL}
     username: ${POSTGRES_USER}
@@ -24,7 +24,7 @@ spring:
 
   data:
     redis:
-      host: 84.247.170.206
+      host: 194.163.148.189
       port: 6379
       password: ${REDIS_PASSWORD}
       timeout: 60000
@@ -59,13 +59,6 @@ spring:
 
 server:
   port: ${APP_PORT}
-  forward-headers-strategy: framework
-
-springdoc:
-  api-docs:
-    path: /api2/v3/api-docs
-  swagger-ui:
-    path: /api2/swagger-ui.html
 
 custom_app_config:
 

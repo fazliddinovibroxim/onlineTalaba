@@ -1,6 +1,6 @@
 spring:
   application:
-    name: furniture-project
+    name: talaba-project
   datasource:
     url: jdbc:postgresql://localhost:5432/talabadb
     username: postgres

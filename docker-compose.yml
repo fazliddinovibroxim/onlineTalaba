@@ -24,13 +24,27 @@ services:
       - ./livekit.yaml:/etc/livekit.yaml:ro
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: talaba_project
     env_file: .env
     ports:
-      - "9393:9393"
+      - "${APP_PORT}:${APP_PORT}"
     depends_on:
       - postgres
       - redis
       - livekit
+
+    restart: unless-stopped
+
+    mem_limit: 7g
+    environment:
+      JAVA_OPTS: >
+        -Djava.net.preferIPv4Stack=true
+        -Djava.net.preferIPv4Addresses=true
+        -Xms2g
+        -Xmx7g
     volumes:
       - /opt/uploads:/app/uploads
