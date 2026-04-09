@@ -76,14 +76,25 @@ public class SecurityConfig {
         return source;
     }
 
+//    @Bean
+//    public AuthenticationProvider authenticationProvider(
+//            UserDetailsService userDetailsService,
+//            PasswordEncoder passwordEncoder) {
+//
+//        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+//        provider.setUserDetailsService(userDetailsService);  // ← to'g'ri
+//        provider.setPasswordEncoder(passwordEncoder);         // ← to'g'ri
+//        return provider;
+//    }
+
     @Bean
     public AuthenticationProvider authenticationProvider(
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
 
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);  // ← to'g'ri
-        provider.setPasswordEncoder(passwordEncoder);         // ← to'g'ri
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
 
