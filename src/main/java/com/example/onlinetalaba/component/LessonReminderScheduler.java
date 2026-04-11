@@ -34,7 +34,7 @@ public class LessonReminderScheduler {
                     .map(member -> member.getUser())
                     .forEach(user -> notificationService.createAndDispatch(
                             user,
-                            "Lesson reminder",
+                            "Dars eslatmasi",
                             lesson.getTitle() + " darsi " + lesson.getStartTime() + " da boshlanadi"
                     ));
 

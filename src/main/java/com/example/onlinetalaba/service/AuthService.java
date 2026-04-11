@@ -87,6 +87,17 @@ public class AuthService {
         return new ResponseApi(200, "Verification code sent to your email");
     }
 
+    public String checkValidUser(String usernameOrEmail){
+
+        if (usernameOrEmail == null || usernameOrEmail.isEmpty()) {
+            return "Foydalanuvchi nomi yoki email kiritilinishi kerak"; }
+        if (userRepository.existsByUsername(usernameOrEmail)) {
+            return "Bunday foydalanuvchi nomi allaqachon tizimda mavjud !";
+        } else if (userRepository.existsByEmail(usernameOrEmail)) {
+            return "Bunday pochta manzili allaqachon tizimda mavjud !";
+        }else return "Foydalanuvchi mavjud emas";
+    }
+
     @Transactional
     public ResponseApi activate(String email, String code) {
         String normalizedEmail = normalizeEmail(email);

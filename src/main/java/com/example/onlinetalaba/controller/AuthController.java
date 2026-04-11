@@ -25,6 +25,11 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(dto));
     }
 
+    @GetMapping("/check-valid-user")
+    public ResponseEntity<String> checkValidUser (@RequestParam String usernameOrEmail) {
+        return ResponseEntity.ok(authService.checkValidUser(usernameOrEmail));
+    }
+
     @PostMapping("/activate")
     public ResponseEntity<ResponseApi> activate(@RequestParam String email,
                                                 @RequestParam String code) {
