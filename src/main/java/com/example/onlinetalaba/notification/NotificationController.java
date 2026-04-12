@@ -1,7 +1,9 @@
 package com.example.onlinetalaba.notification;
 
 import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.handler.BadRequestException;
+import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.security.CurrentUser;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +46,14 @@ public class NotificationController {
     @GetMapping("/getAllNotificationByUserId")
     public ResponseEntity<?> getAllNotificationByUserId(@RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
                                                         @RequestParam(value = "size", required = false, defaultValue = "20") Integer size,
-                                                        @RequestParam("userId") Long userId) {
+                                                        @RequestParam("userId") Long userId,
+                                                        @CurrentUser User user) {
+        boolean canView = user.getId().equals(userId)
+                || user.getRoles().getAppRoleName() == AppRoleName.ADMIN
+                || user.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN;
+        if (!canView) {
+            throw new ForbiddenException("Access denied");
+        }
         return notificationService.getAllNotificationByUserId(PageRequest.of(page, size), userId);
     }
 

@@ -26,6 +26,7 @@ public class NotificationService {
     private final FCMRepository fcmRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationMapper notificationMapper;
+    private final NotificationSocketService notificationSocketService;
 
 
     public ResponseEntity<?> setFcmToken(User user, String fcmToken) {
@@ -128,6 +129,7 @@ public class NotificationService {
                 .isRead(false)
                 .build();
         notificationRepository.save(notification);
+        notificationSocketService.pushToUser(notificationMapper.toDto(notification), user);
         sendAsyncNotification(notification);
         return notification;
     }

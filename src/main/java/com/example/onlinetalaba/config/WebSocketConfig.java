@@ -26,14 +26,18 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOriginPatterns(
                         "http://localhost:5173",
                         "http://localhost:8080",
-                        "https://onlinetalaba.com",
-                        "https://www.onlinetalaba.com"
+                        "http://localhost:53920",
+                        "https://talaba.pulhisob.uz",
+                        "https://www.talaba.pulhisob.uz"
                 )
                 .withSockJS();
 
  //       flutter uchun sockJS siz path
-//        registry.addEndpoint("/ws-native")
-//                .setAllowedOriginPatterns(...);
+        registry.addEndpoint("/ws-native")
+                .setAllowedOriginPatterns(
+                        "http://localhost:*",
+                        "https://talaba.pulhisob.uz"
+                );
     }
 
     @Override

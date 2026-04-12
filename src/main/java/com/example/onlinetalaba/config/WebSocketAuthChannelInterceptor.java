@@ -23,19 +23,42 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String authHeader = accessor.getFirstNativeHeader("Authorization");
+            String authHeader = resolveAuthHeader(accessor);
 
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                String email = jwtService.extractUsername(token);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                throw new IllegalArgumentException("Missing Authorization header");
+            }
 
-                User user = userRepository.findByEmail(email);
-                if (user != null && jwtService.validateToken(token, user)) {
-                    accessor.setUser(new StompPrincipal(user));
-                }
+            String token = authHeader.substring(7);
+            String email = jwtService.extractUsername(token);
+
+            User user = userRepository.findByEmail(email);
+            if (user != null && jwtService.validateToken(token, user)) {
+                accessor.setUser(new StompPrincipal(user));
+            } else {
+                throw new IllegalArgumentException("Invalid token");
             }
         }
 
         return message;
+    }
+
+    private String resolveAuthHeader(StompHeaderAccessor accessor) {
+        String authHeader = accessor.getFirstNativeHeader("Authorization");
+        if (authHeader != null) {
+            return authHeader;
+        }
+
+        authHeader = accessor.getFirstNativeHeader("authorization");
+        if (authHeader != null) {
+            return authHeader;
+        }
+
+        String token = accessor.getFirstNativeHeader("token");
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+
+        return token.startsWith("Bearer ") ? token : "Bearer " + token;
     }
 }

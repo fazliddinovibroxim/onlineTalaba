@@ -4,6 +4,7 @@ import com.example.onlinetalaba.dto.live.HandRaiseDecisionRequest;
 import com.example.onlinetalaba.dto.live.HandRaiseResponse;
 import com.example.onlinetalaba.entity.*;
 import com.example.onlinetalaba.enums.HandRaiseStatus;
+import com.example.onlinetalaba.enums.LiveSessionStatus;
 import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
@@ -32,6 +33,9 @@ public class HandRaiseService {
 
         if (!session.getLessonSchedule().getRoom().isActive()) {
             throw new ForbiddenException("Room is not active");
+        }
+        if (!session.isActive() || session.getStatus() != LiveSessionStatus.LIVE) {
+            throw new ForbiddenException("Live session is not active");
         }
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
@@ -67,6 +71,9 @@ public class HandRaiseService {
         if (!handRaise.getLiveSession().getLessonSchedule().getRoom().isActive()) {
             throw new ForbiddenException("Room is not active");
         }
+        if (!handRaise.getLiveSession().isActive() || handRaise.getLiveSession().getStatus() != LiveSessionStatus.LIVE) {
+            throw new ForbiddenException("Live session is not active");
+        }
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         handRaise.getLiveSession().getLessonSchedule().getRoom().getId(),
@@ -97,6 +104,9 @@ public class HandRaiseService {
 
         if (!session.getLessonSchedule().getRoom().isActive()) {
             throw new ForbiddenException("Room is not active");
+        }
+        if (!session.isActive() || session.getStatus() != LiveSessionStatus.LIVE) {
+            throw new ForbiddenException("Live session is not active");
         }
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(

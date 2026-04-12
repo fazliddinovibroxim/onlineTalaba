@@ -53,9 +53,11 @@ public class LiveSessionService {
                         .active(true)
                         .build());
 
-        if (session.getStatus() == LiveSessionStatus.CREATED) {
+        if (session.getStatus() != LiveSessionStatus.LIVE || !session.isActive()) {
+            session.setHost(currentUser);
             session.setStatus(LiveSessionStatus.LIVE);
             session.setStartedAt(LocalDateTime.now());
+            session.setEndedAt(null);
             session.setActive(true);
         }
 
@@ -71,6 +73,8 @@ public class LiveSessionService {
     public LiveKitTokenResponse issueToken(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        validateLiveSessionIsJoinable(session);
 
         if (!session.getLessonSchedule().getRoom().isActive()) {
             throw new ForbiddenException("Room is not active");
@@ -168,5 +172,11 @@ public class LiveSessionService {
         return handRaiseRepository.findTopByLiveSessionIdAndUserIdOrderByRequestedAtDesc(session.getId(), currentUser.getId())
                 .map(handRaise -> handRaise.getStatus() == HandRaiseStatus.APPROVED)
                 .orElse(false);
+    }
+
+    private void validateLiveSessionIsJoinable(LiveSession session) {
+        if (!session.isActive() || session.getStatus() != LiveSessionStatus.LIVE) {
+            throw new ForbiddenException("Live session is not active");
+        }
     }
 }

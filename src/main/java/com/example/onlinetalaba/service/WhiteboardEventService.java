@@ -6,6 +6,7 @@ import com.example.onlinetalaba.entity.LiveSession;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.entity.WhiteboardEvent;
+import com.example.onlinetalaba.enums.LiveSessionStatus;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LiveSessionRepository;
@@ -32,6 +33,9 @@ public class WhiteboardEventService {
 
         if (!liveSession.getLessonSchedule().getRoom().isActive()) {
             throw new ForbiddenException("Room is not active");
+        }
+        if (!liveSession.isActive() || liveSession.getStatus() != LiveSessionStatus.LIVE) {
+            throw new ForbiddenException("Live session is not active");
         }
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
@@ -62,6 +66,9 @@ public class WhiteboardEventService {
 
         if (!liveSession.getLessonSchedule().getRoom().isActive()) {
             throw new ForbiddenException("Room is not active");
+        }
+        if (!liveSession.isActive() || liveSession.getStatus() != LiveSessionStatus.LIVE) {
+            throw new ForbiddenException("Live session is not active");
         }
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(

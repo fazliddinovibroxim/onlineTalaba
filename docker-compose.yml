@@ -18,8 +18,9 @@ services:
       - "7880:7880"
       - "7881:7881"
       - "7882:7882/udp"
+      - "50000-50100:50000-50100/udp"
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
+      - ./livekit.yml:/etc/livekit.yaml:ro
 
   app:
     build:

@@ -20,6 +20,11 @@ public class LiveKitTokenService {
                                          String identity,
                                          String participantName,
                                          boolean canPublish) {
+        if (liveKitProps.apiKey() == null || liveKitProps.apiKey().isBlank()
+                || liveKitProps.apiSecret() == null || liveKitProps.apiSecret().isBlank()) {
+            throw new IllegalStateException("LiveKit API credentials are not configured");
+        }
+
         AccessToken token = new AccessToken(liveKitProps.apiKey(), liveKitProps.apiSecret());
         token.setIdentity(identity);
         token.setName(participantName);
@@ -37,6 +42,6 @@ public class LiveKitTokenService {
     }
 
     public String serverUrl() {
-        return liveKitProps.url();
+        return liveKitProps.clientUrl();
     }
 }

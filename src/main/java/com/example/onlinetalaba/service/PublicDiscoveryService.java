@@ -166,13 +166,13 @@ public class PublicDiscoveryService {
     }
 
     private long resolveParticipantCount(LiveSession session) {
-        if (liveKitProps.url() == null || liveKitProps.apiKey() == null || liveKitProps.apiSecret() == null) {
+        if (liveKitProps.apiBaseUrl() == null || liveKitProps.apiKey() == null || liveKitProps.apiSecret() == null) {
             return 0;
         }
 
         try {
             RoomServiceClient client = RoomServiceClient.create(
-                    liveKitProps.url(),
+                    liveKitProps.apiBaseUrl(),
                     liveKitProps.apiKey(),
                     liveKitProps.apiSecret()
             );

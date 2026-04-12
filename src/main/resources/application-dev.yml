@@ -87,6 +87,10 @@ app:
 
   livekit:
     url: http://livekit:7880
+    api-url: ${LIVEKIT_API_URL:http://livekit:7880}
+    ws-url: ${LIVEKIT_WS_URL:ws://localhost:7880}
+    api-key: ${LIVEKIT_API_KEY:devkey}
+    api-secret: ${LIVEKIT_API_SECRET:devsecret}
 
   firebase:
     config-path: ${FIREBASE_CONFIG_PATH:src/main/resources/firebase/onlinetalaba-eef62-firebase-adminsdk-fbsvc-26cc1ef961.json}
