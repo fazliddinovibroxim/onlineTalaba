@@ -86,8 +86,9 @@ public class UserDashboardService {
         boolean canModerateRoomRequests = !moderatedRequests.isEmpty()
                 || memberships.stream().anyMatch(member -> member.getRole().name().equals("OWNER") || member.getRole().name().equals("TEACHER"));
 
-        List<Room> discoverRooms = appRole == AppRoleName.USER
-                ? roomRepository.findAllByVisibilityAndActiveTrue(RoomVisibility.PUBLIC).stream()
+        List<Room> discoverRooms = (appRole == AppRoleName.STUDENT || appRole == AppRoleName.TEACHER || appRole == AppRoleName.USER)
+                ? roomRepository.findAll().stream()
+                .filter(Room::isActive)
                 .filter(room -> roomIds.stream().noneMatch(id -> id.equals(room.getId())))
                 .toList()
                 : Collections.emptyList();

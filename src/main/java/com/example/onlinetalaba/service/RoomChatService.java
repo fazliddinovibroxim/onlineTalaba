@@ -109,7 +109,7 @@ public class RoomChatService {
 
         boolean canDelete = message.getSender().getId().equals(currentUser.getId())
                 || member.isCanManageRoom()
-                || member.isCanInviteMembers(); // xohlasangiz moderator permission alohida qilasiz
+                || member.isCanInviteMembers();
 
         if (!canDelete) {
             throw new ForbiddenException("You cannot delete this message");

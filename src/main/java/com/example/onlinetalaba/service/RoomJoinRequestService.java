@@ -7,6 +7,7 @@ import com.example.onlinetalaba.entity.Room;
 import com.example.onlinetalaba.entity.RoomJoinRequest;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
+import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.enums.RoomJoinRequestStatus;
 import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.handler.ConflictException;
@@ -94,14 +95,19 @@ public class RoomJoinRequestService {
             throw new ConflictException("User already exists in this room");
         }
 
+        User requester = joinRequest.getRequester();
+        AppRoleName appRole = requester.getRoles().getAppRoleName();
+        RoomMemberRole roomRole = (appRole == AppRoleName.TEACHER) ? RoomMemberRole.TEACHER : RoomMemberRole.STUDENT;
+        boolean isTeacher = (roomRole == RoomMemberRole.TEACHER);
+
         roomMemberRepository.save(RoomMember.builder()
                 .room(room)
-                .user(joinRequest.getRequester())
-                .role(RoomMemberRole.STUDENT)
+                .user(requester)
+                .role(roomRole)
                 .canManageRoom(false)
                 .canInviteMembers(false)
-                .canScheduleLesson(false)
-                .canUploadMaterials(false)
+                .canScheduleLesson(isTeacher)
+                .canUploadMaterials(isTeacher)
                 .active(true)
                 .build());
 

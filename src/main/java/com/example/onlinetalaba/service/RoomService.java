@@ -163,14 +163,18 @@ public class RoomService {
             throw new ForbiddenException("You cannot join a private room without invitation");
         }
 
+        AppRoleName appRole = currentUser.getRoles().getAppRoleName();
+        RoomMemberRole roomRole = (appRole == AppRoleName.TEACHER) ? RoomMemberRole.TEACHER : RoomMemberRole.STUDENT;
+        boolean isTeacher = (roomRole == RoomMemberRole.TEACHER);
+
         RoomMember member = RoomMember.builder()
                 .room(room)
                 .user(currentUser)
-                .role(RoomMemberRole.STUDENT)
+                .role(roomRole)
                 .canManageRoom(false)
                 .canInviteMembers(false)
-                .canScheduleLesson(false)
-                .canUploadMaterials(false)
+                .canScheduleLesson(isTeacher)
+                .canUploadMaterials(isTeacher)
                 .active(true)
                 .build();
 

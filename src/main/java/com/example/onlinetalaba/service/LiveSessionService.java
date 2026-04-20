@@ -160,18 +160,11 @@ public class LiveSessionService {
 
     private boolean canPublishAudio(LiveSession session, RoomMember member, User currentUser) {
         if (member.getRole() == RoomMemberRole.OWNER
-                || member.getRole() == RoomMemberRole.TEACHER
-                || member.isCanManageRoom()) {
+                || member.getRole() == RoomMemberRole.TEACHER) {
             return true;
         }
 
-        if (!session.getLessonSchedule().isLiveVoiceQuestionsEnabled()) {
-            return false;
-        }
-
-        return handRaiseRepository.findTopByLiveSessionIdAndUserIdOrderByRequestedAtDesc(session.getId(), currentUser.getId())
-                .map(handRaise -> handRaise.getStatus() == HandRaiseStatus.APPROVED)
-                .orElse(false);
+        return false;
     }
 
     private void validateLiveSessionIsJoinable(LiveSession session) {
