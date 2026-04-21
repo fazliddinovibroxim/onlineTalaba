@@ -178,6 +178,10 @@ public class RoomJoinRequestService {
     }
 
     private void ensureCanModerateRequests(Room room, User currentUser) {
+        if (currentUser.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN) {
+            return;
+        }
+
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 

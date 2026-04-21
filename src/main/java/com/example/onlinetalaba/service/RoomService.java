@@ -67,7 +67,7 @@ public class RoomService {
     public RoomResponse getById(Long roomId, User currentUser) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
-        validateViewAccess(room, currentUser);
+        // Everyone can see basic room info now
         return mapToResponse(room, currentUser);
     }
 
@@ -219,19 +219,22 @@ public class RoomService {
                 .build();
     }
 
-    private void validateViewAccess(Room room, User currentUser) {
-        if (room.getVisibility() == RoomVisibility.PUBLIC) {
-            return;
-        }
-
+    public boolean hasFullAccess(Room room, User currentUser) {
         AppRoleName role = currentUser.getRoles().getAppRoleName();
         if (role == AppRoleName.SUPER_ADMIN || role == AppRoleName.ADMIN) {
-            return;
+            return true;
         }
 
-        boolean isMember = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId()).isPresent();
-        if (!isMember) {
-            throw new ForbiddenException("You do not have access to this private room");
+        if (room.getVisibility() == RoomVisibility.PUBLIC) {
+            return true;
+        }
+
+        return roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId()).isPresent();
+    }
+
+    public void validateFullAccess(Room room, User currentUser) {
+        if (!hasFullAccess(room, currentUser)) {
+            throw new ForbiddenException("You do not have access to this room. Please join first.");
         }
     }
 }

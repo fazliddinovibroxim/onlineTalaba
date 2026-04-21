@@ -3,7 +3,6 @@ package com.example.onlinetalaba.service;
 import com.example.onlinetalaba.dto.live.WhiteboardEventRequest;
 import com.example.onlinetalaba.dto.live.WhiteboardEventResponse;
 import com.example.onlinetalaba.entity.LiveSession;
-import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.entity.WhiteboardEvent;
 import com.example.onlinetalaba.enums.LiveSessionStatus;
@@ -25,6 +24,7 @@ public class WhiteboardEventService {
     private final WhiteboardEventRepository whiteboardEventRepository;
     private final LiveSessionRepository liveSessionRepository;
     private final RoomMemberRepository roomMemberRepository;
+    private final RoomService roomService;
 
     @Transactional
     public WhiteboardEventResponse saveEvent(WhiteboardEventRequest request, User currentUser) {
@@ -38,14 +38,7 @@ public class WhiteboardEventService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
-                        liveSession.getLessonSchedule().getRoom().getId(),
-                        currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
-
-        if (!member.isActive()) {
-            throw new ForbiddenException("Inactive room member");
-        }
+        roomService.validateFullAccess(liveSession.getLessonSchedule().getRoom(), currentUser);
 
         WhiteboardEvent event = WhiteboardEvent.builder()
                 .liveSession(liveSession)
@@ -71,10 +64,7 @@ public class WhiteboardEventService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
-                        liveSession.getLessonSchedule().getRoom().getId(),
-                        currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+        roomService.validateFullAccess(liveSession.getLessonSchedule().getRoom(), currentUser);
 
         return whiteboardEventRepository.findAllByLiveSessionIdAndDeletedFalseOrderByIdAsc(liveSessionId)
                 .stream()

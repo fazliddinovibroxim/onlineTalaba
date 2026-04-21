@@ -41,9 +41,7 @@ public class PublicDiscoveryService {
         List<Room> publicRooms = roomRepository.findAllByVisibilityAndActiveTrue(RoomVisibility.PUBLIC);
         Set<Long> myRoomIds = getMyRoomIds(currentUser);
 
-        List<Room> filteredRooms = isTeacherOrStudent(currentUser)
-                ? publicRooms.stream().filter(room -> myRoomIds.contains(room.getId())).toList()
-                : publicRooms;
+        List<Room> filteredRooms = publicRooms;
 
         return filteredRooms.stream()
                 .map(this::toPublicRoomResponse)
@@ -53,16 +51,7 @@ public class PublicDiscoveryService {
     public List<PrivateRoomResponse> getPrivateRooms(User currentUser) {
         List<Room> privateRooms = roomRepository.findAllByVisibilityAndActiveTrue(RoomVisibility.PRIVATE);
 
-        if (isSuperScope(currentUser)) {
-            return privateRooms.stream()
-                    .map(room -> toPrivateRoomResponse(room, currentUser))
-                    .toList();
-        }
-
-        Set<Long> myRoomIds = getMyRoomIds(currentUser);
-
         return privateRooms.stream()
-                .filter(room -> myRoomIds.contains(room.getId()))
                 .map(room -> toPrivateRoomResponse(room, currentUser))
                 .toList();
     }

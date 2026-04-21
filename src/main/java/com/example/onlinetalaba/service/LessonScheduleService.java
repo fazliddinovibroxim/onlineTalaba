@@ -27,6 +27,7 @@ public class LessonScheduleService {
     private final LessonScheduleRepository lessonScheduleRepository;
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
+    private final RoomService roomService;
 
     @Transactional
     public void create(Long roomId, LessonScheduleRequest request, User currentUser) {
@@ -75,8 +76,7 @@ public class LessonScheduleService {
             throw new ForbiddenException("Room is not active");
         }
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+        roomService.validateFullAccess(room, currentUser);
 
         return lessonScheduleRepository.findAllByRoomIdOrderByStartTimeAsc(roomId)
                 .stream()

@@ -31,6 +31,7 @@ public class LibraryService {
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final AttachmentService attachmentService;
+    private final RoomService roomService;
 
     public LibraryMaterialResponse uploadToRoom(Long roomId,
                                                 LibraryMaterialRequest request,
@@ -80,8 +81,7 @@ public class LibraryService {
             throw new ForbiddenException("Room is not active");
         }
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+        roomService.validateFullAccess(room, currentUser);
 
         return libraryMaterialRepository.findAllByRoomIdAndActiveTrue(roomId)
                 .stream()
@@ -97,8 +97,7 @@ public class LibraryService {
             throw new ForbiddenException("Room is not active");
         }
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+        roomService.validateFullAccess(room, currentUser);
 
         LibraryMaterial material = libraryMaterialRepository.findById(materialId)
                 .orElseThrow(() -> new NotFoundException("Library material not found"));

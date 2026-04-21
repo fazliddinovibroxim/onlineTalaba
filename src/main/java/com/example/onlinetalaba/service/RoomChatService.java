@@ -27,6 +27,7 @@ public class RoomChatService {
     private final RoomMemberRepository roomMemberRepository;
     private final RoomChatMessageRepository roomChatMessageRepository;
     private final AttachmentService attachmentService;
+    private final RoomService roomService;
 
     @Transactional
     public RoomChatMessageResponse send(RoomChatMessageRequest request, User currentUser) {
@@ -98,18 +99,15 @@ public class RoomChatService {
                 .toList();
     }
 
+
     @Transactional
     public void deleteMessage(Long messageId, User currentUser) {
         RoomChatMessage message = roomChatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new NotFoundException("Message not found"));
 
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
-                        message.getRoom().getId(), currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
-
         boolean canDelete = message.getSender().getId().equals(currentUser.getId())
-                || member.isCanManageRoom()
-                || member.isCanInviteMembers();
+                || roomService.hasFullAccess(message.getRoom(), currentUser);
+
 
         if (!canDelete) {
             throw new ForbiddenException("You cannot delete this message");
@@ -123,13 +121,7 @@ public class RoomChatService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
 
-        RoomMember member = roomMemberRepository
-                .findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
-
-        if (!member.isActive()) {
-            throw new ForbiddenException("Inactive room member");
-        }
+        roomService.validateFullAccess(room, currentUser);
 
         if (!room.isActive()) {
             throw new ForbiddenException("Room is not active");

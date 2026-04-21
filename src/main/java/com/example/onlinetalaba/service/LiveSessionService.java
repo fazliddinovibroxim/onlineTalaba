@@ -22,6 +22,7 @@ public class LiveSessionService {
     private final RoomMemberRepository roomMemberRepository;
     private final HandRaiseRepository handRaiseRepository;
     private final LiveKitTokenService liveKitTokenService;
+    private final RoomService roomService;
 
     @Transactional
     public LiveSessionResponse createOrStart(Long lessonScheduleId, User currentUser) {
@@ -34,11 +35,12 @@ public class LiveSessionService {
 
         RoomMember member = roomMemberRepository
                 .findByRoomIdAndUserIdAndActiveTrue(lesson.getRoom().getId(), currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+                .orElse(null);
 
-        boolean canStart = member.getRole() == RoomMemberRole.OWNER
+        boolean canStart = (member != null && (member.getRole() == RoomMemberRole.OWNER
                 || member.getRole() == RoomMemberRole.TEACHER
-                || member.isCanScheduleLesson();
+                || member.isCanScheduleLesson()))
+                || currentUser.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN;
 
         if (!canStart) {
             throw new ForbiddenException("You do not have permission to start live session");
@@ -80,10 +82,12 @@ public class LiveSessionService {
             throw new ForbiddenException("Room is not active");
         }
 
+        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
+
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
                         currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+                .orElse(null);
 
         boolean canPublish = canPublishAudio(session, member, currentUser);
 
@@ -112,8 +116,11 @@ public class LiveSessionService {
             throw new ForbiddenException("Room is not active");
         }
 
-        if (!session.getHost().getId().equals(currentUser.getId())) {
-            throw new ForbiddenException("Only host can end live session");
+        boolean isHost = session.getHost().getId().equals(currentUser.getId());
+        boolean isSuperAdmin = currentUser.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN;
+
+        if (!isHost && !isSuperAdmin) {
+            throw new ForbiddenException("Only host or super admin can end live session");
         }
 
         session.setStatus(LiveSessionStatus.ENDED);
@@ -136,10 +143,7 @@ public class LiveSessionService {
             throw new ForbiddenException("Room is not active");
         }
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
-                        session.getLessonSchedule().getRoom().getId(),
-                        currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         return mapToResponse(session);
     }
@@ -159,12 +163,18 @@ public class LiveSessionService {
     }
 
     private boolean canPublishAudio(LiveSession session, RoomMember member, User currentUser) {
-        if (member.getRole() == RoomMemberRole.OWNER
-                || member.getRole() == RoomMemberRole.TEACHER) {
+        if (currentUser.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN) {
+            return true;
+        }
+        
+        if (member != null && (member.getRole() == RoomMemberRole.OWNER
+                || member.getRole() == RoomMemberRole.TEACHER)) {
             return true;
         }
 
-        return false;
+        // Check if hand is raised and approved
+        return handRaiseRepository.existsByLiveSessionIdAndUserIdAndStatus(
+                session.getId(), currentUser.getId(), HandRaiseStatus.APPROVED);
     }
 
     private void validateLiveSessionIsJoinable(LiveSession session) {

@@ -5,7 +5,6 @@ import com.example.onlinetalaba.dto.live.HandRaiseResponse;
 import com.example.onlinetalaba.entity.*;
 import com.example.onlinetalaba.enums.HandRaiseStatus;
 import com.example.onlinetalaba.enums.LiveSessionStatus;
-import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.HandRaiseRepository;
@@ -25,6 +24,7 @@ public class HandRaiseService {
     private final HandRaiseRepository handRaiseRepository;
     private final LiveSessionRepository liveSessionRepository;
     private final RoomMemberRepository roomMemberRepository;
+    private final RoomService roomService;
 
     @Transactional
     public HandRaiseResponse raiseHand(Long liveSessionId, User currentUser) {
@@ -38,10 +38,7 @@ public class HandRaiseService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
-                        session.getLessonSchedule().getRoom().getId(),
-                        currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         HandRaise handRaise = handRaiseRepository
                 .findByLiveSessionIdAndUserIdAndActiveTrue(liveSessionId, currentUser.getId())
@@ -75,14 +72,7 @@ public class HandRaiseService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
-                        handRaise.getLiveSession().getLessonSchedule().getRoom().getId(),
-                        currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
-
-        boolean canModerate = member.getRole() == RoomMemberRole.OWNER
-                || member.getRole() == RoomMemberRole.TEACHER
-                || member.isCanManageRoom();
+        boolean canModerate = roomService.hasFullAccess(handRaise.getLiveSession().getLessonSchedule().getRoom(), currentUser);
 
         if (!canModerate) {
             throw new ForbiddenException("You do not have permission to process hand raises");
@@ -109,10 +99,7 @@ public class HandRaiseService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
-                        session.getLessonSchedule().getRoom().getId(),
-                        currentUser.getId())
-                .orElseThrow(() -> new ForbiddenException("Access denied"));
+        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         return handRaiseRepository.findAllByLiveSessionIdAndActiveTrueOrderByRequestedAtAsc(liveSessionId)
                 .stream()
