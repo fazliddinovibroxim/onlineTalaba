@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -31,4 +32,7 @@ public class RoomResponse {
     private boolean canScheduleLesson;
     private boolean canUploadMaterials;
     private boolean myPendingJoinRequest;
+
+    // Optional: single-room endpointlarda qaytadi (search/listda bo'sh bo'lishi mumkin)
+    private List<RoomMemberUserResponse> members;
 }

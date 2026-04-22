@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class RoomRequest {
     @NotBlank
@@ -17,4 +19,7 @@ public class RoomRequest {
 
     @NotNull
     private RoomVisibility visibility;
+
+    // Optional: room yaratishda biryo'la memberlarni tanlab qo'shib qo'yish uchun.
+    private List<RoomInviteRequest> members;
 }

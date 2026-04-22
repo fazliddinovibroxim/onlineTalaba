@@ -22,14 +22,8 @@ public class RoleInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if ("always".equals(mode)) {
-            createRole(AppRoleName.SUPER_ADMIN, Set.of(
-                    AppPermissions.ADD,
-                    AppPermissions.EDIT,
-                    AppPermissions.DELETE,
-                    AppPermissions.LIST,
-                    AppPermissions.GET,
-                    AppPermissions.DELETE_ALL
-            ));
+            // SUPER_ADMIN should consistently have full permission set.
+            createRole(AppRoleName.SUPER_ADMIN, Set.of(AppPermissions.values()));
 
             createRole(AppRoleName.ADMIN, Set.of(
                     AppPermissions.ADD,

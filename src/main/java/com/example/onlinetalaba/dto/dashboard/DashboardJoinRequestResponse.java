@@ -18,4 +18,5 @@ public class DashboardJoinRequestResponse {
     private RoomJoinRequestStatus status;
     private String message;
     private LocalDateTime createdAt;
+    private LocalDateTime processedAt;
 }

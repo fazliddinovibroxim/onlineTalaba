@@ -8,6 +8,7 @@ import com.example.onlinetalaba.enums.AppPermissions;
 import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.enums.LessonStatus;
 import com.example.onlinetalaba.enums.RoomJoinRequestStatus;
+import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.enums.RoomVisibility;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.notification.Notification;
@@ -21,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -55,10 +58,11 @@ public class UserDashboardService {
             return buildSuperAdminDashboard(user, permissions);
         }
 
-        List<RoomMember> memberships = roomMemberRepository.findAllByUserIdAndActiveTrue(user.getId());
+        List<RoomMember> memberships = roomMemberRepository.findAllByUserIdAndActiveTrue(user.getId()).stream()
+                .filter(m -> m.getRoom() != null && m.getRoom().isActive())
+                .toList();
         List<Room> myRooms = memberships.stream()
                 .map(RoomMember::getRoom)
-                .filter(Room::isActive)
                 .distinct()
                 .toList();
         List<Long> roomIds = myRooms.stream().map(Room::getId).toList();
@@ -74,7 +78,46 @@ public class UserDashboardService {
                 : libraryMaterialRepository.findTop10ByRoomIdInAndActiveTrueOrderByDatetimeCreatedDesc(roomIds);
         List<Notification> notifications = notificationRepository.findTop10ByUserIdOrderByIdDesc(user.getId());
         long unreadCount = notificationRepository.countByUserIdAndIsReadFalse(user.getId());
-        List<RoomJoinRequest> myJoinRequests = roomJoinRequestRepository.findAllByRequesterIdOrderByDatetimeCreatedDesc(user.getId());
+        List<RoomJoinRequest> myJoinRequests = roomJoinRequestRepository.findAllByRequesterIdOrderByDatetimeCreatedDesc(user.getId()).stream()
+                .filter(jr -> jr.getRoom() != null && jr.getRoom().isActive())
+                .toList();
+
+        List<Long> ownedRoomIds = roomRepository.findByOwnerId(user.getId()).stream()
+                .filter(Room::isActive)
+                .map(Room::getId)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<Long> memberRoomIds = memberships.stream()
+                .map(m -> m.getRoom().getId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<Long> memberPublicRoomIds = memberships.stream()
+                .filter(m -> m.getRoom().getVisibility() == RoomVisibility.PUBLIC)
+                .map(m -> m.getRoom().getId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<Long> memberPrivateRoomIds = memberships.stream()
+                .filter(m -> m.getRoom().getVisibility() == RoomVisibility.PRIVATE)
+                .map(m -> m.getRoom().getId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<Long> joinRequestRoomIdsSent = myJoinRequests.stream()
+                .map(jr -> jr.getRoom().getId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
 
         List<RoomJoinRequest> moderatedRequests = memberships.stream()
                 .filter(member -> member.getRole().name().equals("OWNER") || member.getRole().name().equals("TEACHER"))
@@ -102,6 +145,11 @@ public class UserDashboardService {
                 .role(appRole)
                 .gender(user.getGender())
                 .permissions(permissions)
+                .ownedRoomIds(ownedRoomIds)
+                .memberRoomIds(memberRoomIds)
+                .memberPublicRoomIds(memberPublicRoomIds)
+                .memberPrivateRoomIds(memberPrivateRoomIds)
+                .joinRequestRoomIdsSent(joinRequestRoomIdsSent)
                 .stats(DashboardStatsResponse.builder()
                         .roomCount(myRooms.size())
                         .ownedRoomCount(myRooms.stream().filter(room -> room.getOwner().getId().equals(user.getId())).count())
@@ -113,7 +161,10 @@ public class UserDashboardService {
                                 : myJoinRequests.stream().filter(r -> r.getStatus() == RoomJoinRequestStatus.PENDING).count())
                         .recentMaterialCount(recentMaterials.size())
                         .build())
-                .myRooms(memberships.stream().map(member -> toRoomCard(member.getRoom(), member.getRole(), liveSessions)).distinct().toList())
+                .myRooms(memberships.stream()
+                        .map(member -> toRoomCard(member.getRoom(), member, liveSessions))
+                        .distinct()
+                        .toList())
                 .discoverRooms(discoverRooms.stream().map(room -> toRoomCard(room, null, liveSessions)).toList())
                 .upcomingLessons(upcomingLessons.stream().limit(10).map(this::toLessonCard).toList())
                 .liveSessions(liveSessions.stream().map(this::toLiveSessionCard).toList())
@@ -159,6 +210,12 @@ public class UserDashboardService {
         List<LibraryMaterial> recentMaterials = libraryMaterialRepository.findTop10ByActiveTrueOrderByDatetimeCreatedDesc();
         List<RoomJoinRequest> pendingRequests = roomJoinRequestRepository.findAllByStatusOrderByDatetimeCreatedAsc(RoomJoinRequestStatus.PENDING);
         List<Notification> notifications = notificationRepository.findTop10ByOrderByIdDesc();
+        List<Long> ownedRoomIds = roomRepository.findByOwnerId(user.getId()).stream()
+                .filter(Room::isActive)
+                .map(Room::getId)
+                .distinct()
+                .sorted()
+                .toList();
 
         return UserDashboardResponse.builder()
                 .userId(user.getId())
@@ -169,6 +226,11 @@ public class UserDashboardService {
                 .role(AppRoleName.SUPER_ADMIN)
                 .gender(user.getGender())
                 .permissions(permissions)
+                .ownedRoomIds(ownedRoomIds)
+                .memberRoomIds(Collections.emptyList())
+                .memberPublicRoomIds(Collections.emptyList())
+                .memberPrivateRoomIds(Collections.emptyList())
+                .joinRequestRoomIdsSent(Collections.emptyList())
                 .stats(DashboardStatsResponse.builder()
                         .roomCount(allRooms.size())
                         .ownedRoomCount(roomRepository.findByOwnerId(user.getId()).size())
@@ -198,8 +260,9 @@ public class UserDashboardService {
                 .build();
     }
 
-    private DashboardRoomResponse toRoomCard(Room room, com.example.onlinetalaba.enums.RoomMemberRole role, List<LiveSession> liveSessions) {
+    private DashboardRoomResponse toRoomCard(Room room, RoomMember membership, List<LiveSession> liveSessions) {
         boolean liveNow = liveSessions.stream().anyMatch(session -> session.getLessonSchedule().getRoom().getId().equals(room.getId()));
+        RoomMemberRole role = membership == null ? null : membership.getRole();
         return DashboardRoomResponse.builder()
                 .id(room.getId())
                 .title(room.getTitle())
@@ -211,6 +274,10 @@ public class UserDashboardService {
                 .ownerName(room.getOwner().getFullName())
                 .roomRole(role)
                 .liveNow(liveNow)
+                .canManageRoom(membership != null && (membership.getRole() == RoomMemberRole.OWNER || membership.isCanManageRoom()))
+                .canInviteMembers(membership != null && (membership.getRole() == RoomMemberRole.OWNER || membership.isCanInviteMembers()))
+                .canScheduleLesson(membership != null && (membership.getRole() == RoomMemberRole.OWNER || membership.isCanScheduleLesson()))
+                .canUploadMaterials(membership != null && (membership.getRole() == RoomMemberRole.OWNER || membership.isCanUploadMaterials()))
                 .build();
     }
 
@@ -275,6 +342,7 @@ public class UserDashboardService {
                 .status(joinRequest.getStatus())
                 .message(joinRequest.getMessage())
                 .createdAt(joinRequest.getDatetimeCreated())
+                .processedAt(joinRequest.getProcessedAt())
                 .build();
     }
 }

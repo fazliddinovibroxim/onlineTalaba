@@ -18,7 +18,6 @@ import com.example.onlinetalaba.enums.LessonStatus;
 import com.example.onlinetalaba.enums.RoomJoinRequestStatus;
 import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.enums.RoomVisibility;
-import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LibraryMaterialRepository;
 import com.example.onlinetalaba.repository.LiveSessionRepository;
@@ -35,7 +34,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,30 +50,14 @@ public class PublicCatalogService {
 
     public List<PublicRoomRichResponse> getPublicRooms(User currentUser) {
         List<Room> publicRooms = roomRepository.findAllByVisibilityAndActiveTrue(RoomVisibility.PUBLIC);
-        Set<Long> myRoomIds = getMyRoomIds(currentUser);
-
-        List<Room> visibleRooms = isTeacherOrStudent(currentUser)
-                ? publicRooms.stream().filter(room -> myRoomIds.contains(room.getId())).toList()
-                : publicRooms;
-
-        return visibleRooms.stream()
+        return publicRooms.stream()
                 .map(room -> toPublicRoomRich(room, currentUser))
                 .toList();
     }
 
     public List<PrivateRoomResponse> getPrivateRooms(User currentUser) {
         List<Room> privateRooms = roomRepository.findAllByVisibilityAndActiveTrue(RoomVisibility.PRIVATE);
-
-        if (isSuperScope(currentUser)) {
-            return privateRooms.stream()
-                    .map(room -> toPrivateRoomRich(room, currentUser))
-                    .toList();
-        }
-
-        Set<Long> myRoomIds = getMyRoomIds(currentUser);
-
         return privateRooms.stream()
-                .filter(room -> myRoomIds.contains(room.getId()))
                 .map(room -> toPrivateRoomRich(room, currentUser))
                 .toList();
     }
@@ -88,25 +70,12 @@ public class PublicCatalogService {
             throw new NotFoundException("Public room not found");
         }
 
-        if (isTeacherOrStudent(currentUser)) {
-            boolean isMember = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId()).isPresent();
-            if (!isMember) {
-                throw new ForbiddenException("You can only view your own public rooms");
-            }
-        }
-
         return toPublicRoomRich(room, currentUser);
     }
 
     public List<PublicLiveLessonResponse> getPublicLiveLessons(User currentUser) {
         List<LiveSession> sessions = liveSessionRepository.findAllByActiveTrueAndLessonScheduleRoomVisibility(RoomVisibility.PUBLIC);
-        Set<Long> myRoomIds = getMyRoomIds(currentUser);
-
-        List<LiveSession> visibleSessions = isTeacherOrStudent(currentUser)
-                ? sessions.stream().filter(s -> myRoomIds.contains(s.getLessonSchedule().getRoom().getId())).toList()
-                : sessions;
-
-        return visibleSessions.stream()
+        return sessions.stream()
                 .map(this::toLiveLessonResponse)
                 .toList();
     }
@@ -214,6 +183,47 @@ public class PublicCatalogService {
 
         boolean canModerate = isSuperScope(currentUser)
                 || (member != null && (member.getRole() == RoomMemberRole.OWNER || member.getRole() == RoomMemberRole.TEACHER));
+
+        boolean canViewPrivateDetails = isSuperScope(currentUser) || member != null;
+
+        if (!canViewPrivateDetails) {
+            return PrivateRoomResponse.builder()
+                    .roomId(room.getId())
+                    .title(room.getTitle())
+                    .subject(room.getSubject())
+                    .description(room.getDescription())
+                    .visibility(room.getVisibility())
+                    .active(room.isActive())
+                    .ownerId(room.getOwner().getId())
+                    .ownerName(room.getOwner().getFullName())
+                    .ownerEmail(null)
+                    .memberCount(roomMemberRepository.countByRoomIdAndActiveTrue(room.getId()))
+                    .teacherCount(0)
+                    .activeLessonCount(0)
+                    .weeklyLessonCount(0)
+                    .resourceCount(0)
+                    .liveNow(false)
+                    .pendingJoinRequestCount(0)
+                    .joinCount30d(0)
+                    .createdAt(room.getDatetimeCreated())
+                    .updatedAt(room.getDatetimeUpdated())
+                    .lastLessonAt(null)
+                    .lastMaterialAt(null)
+                    .lastActiveAt(null)
+                    .upcomingLessons(List.of())
+                    .recentMaterials(List.of())
+                    .myRole(null)
+                    .canManageRoom(false)
+                    .canInviteMembers(false)
+                    .canScheduleLesson(false)
+                    .canUploadMaterials(false)
+                    .myPendingJoinRequest(roomJoinRequestRepository.existsByRoomIdAndRequesterIdAndStatus(
+                            room.getId(),
+                            currentUser.getId(),
+                            RoomJoinRequestStatus.PENDING
+                    ))
+                    .build();
+        }
 
         List<PublicLessonMiniResponse> upcomingLessons = lessonScheduleRepository
                 .findTop3ByRoomIdAndStartTimeAfterOrderByStartTimeAsc(room.getId(), now)
@@ -324,20 +334,10 @@ public class PublicCatalogService {
                 .build();
     }
 
-    private Set<Long> getMyRoomIds(User currentUser) {
-        return roomMemberRepository.findAllByUserIdAndActiveTrue(currentUser.getId()).stream()
-                .map(member -> member.getRoom().getId())
-                .collect(Collectors.toSet());
-    }
-
     private boolean isSuperScope(User currentUser) {
+        // Used for join-request moderation counters in private room cards.
         AppRoleName role = currentUser.getRoles().getAppRoleName();
         return role == AppRoleName.SUPER_ADMIN || role == AppRoleName.ADMIN;
-    }
-
-    private boolean isTeacherOrStudent(User currentUser) {
-        AppRoleName role = currentUser.getRoles().getAppRoleName();
-        return role == AppRoleName.TEACHER || role == AppRoleName.STUDENT;
     }
 
     private List<String> buildTags(Room room) {

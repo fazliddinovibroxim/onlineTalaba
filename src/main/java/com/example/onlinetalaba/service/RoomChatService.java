@@ -7,6 +7,8 @@ import com.example.onlinetalaba.entity.RoomChatMessage;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.ChatMessageType;
+import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.RoomChatMessageRepository;
@@ -105,8 +107,24 @@ public class RoomChatService {
         RoomChatMessage message = roomChatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new NotFoundException("Message not found"));
 
-        boolean canDelete = message.getSender().getId().equals(currentUser.getId())
-                || roomService.hasFullAccess(message.getRoom(), currentUser);
+        if (!message.getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
+        boolean isSender = message.getSender().getId().equals(currentUser.getId());
+        boolean isAdminScope = currentUser.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN
+                || currentUser.getRoles().getAppRoleName() == AppRoleName.ADMIN;
+
+        RoomMember membership = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
+                        message.getRoom().getId(),
+                        currentUser.getId())
+                .orElse(null);
+
+        boolean isModerator = membership != null && (membership.getRole() == RoomMemberRole.OWNER
+                || membership.getRole() == RoomMemberRole.TEACHER
+                || membership.isCanManageRoom());
+
+        boolean canDelete = isSender || isAdminScope || isModerator;
 
 
         if (!canDelete) {
@@ -121,11 +139,11 @@ public class RoomChatService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
 
-        roomService.validateFullAccess(room, currentUser);
-
         if (!room.isActive()) {
             throw new ForbiddenException("Room is not active");
         }
+
+        roomService.validateMemberAccess(room, currentUser);
 
         return room;
     }

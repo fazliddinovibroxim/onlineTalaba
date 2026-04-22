@@ -11,6 +11,8 @@ import org.springframework.messaging.simp.stomp.*;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 
+import java.util.Locale;
+
 @Configuration
 @RequiredArgsConstructor
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
@@ -30,9 +32,10 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             }
 
             String token = authHeader.substring(7);
-            String email = jwtService.extractUsername(token);
+            String subject = jwtService.extractUsername(token);
+            String username = subject == null ? null : subject.trim().toLowerCase(Locale.ROOT);
 
-            User user = userRepository.findByEmail(email);
+            User user = username == null ? null : userRepository.findByUsername(username).orElse(null);
             if (user != null && jwtService.validateToken(token, user)) {
                 accessor.setUser(new StompPrincipal(user));
             } else {

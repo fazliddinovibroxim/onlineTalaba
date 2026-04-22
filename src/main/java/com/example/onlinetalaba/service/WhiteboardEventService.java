@@ -38,7 +38,7 @@ public class WhiteboardEventService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        roomService.validateFullAccess(liveSession.getLessonSchedule().getRoom(), currentUser);
+        roomService.validateMemberAccess(liveSession.getLessonSchedule().getRoom(), currentUser);
 
         WhiteboardEvent event = WhiteboardEvent.builder()
                 .liveSession(liveSession)
@@ -64,7 +64,7 @@ public class WhiteboardEventService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        roomService.validateFullAccess(liveSession.getLessonSchedule().getRoom(), currentUser);
+        roomService.validateMemberAccess(liveSession.getLessonSchedule().getRoom(), currentUser);
 
         return whiteboardEventRepository.findAllByLiveSessionIdAndDeletedFalseOrderByIdAsc(liveSessionId)
                 .stream()

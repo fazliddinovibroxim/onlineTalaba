@@ -18,4 +18,9 @@ public class DashboardRoomResponse {
     private String ownerName;
     private RoomMemberRole roomRole;
     private boolean liveNow;
+
+    private boolean canManageRoom;
+    private boolean canInviteMembers;
+    private boolean canScheduleLesson;
+    private boolean canUploadMaterials;
 }

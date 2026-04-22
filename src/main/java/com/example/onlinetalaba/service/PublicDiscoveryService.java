@@ -39,11 +39,7 @@ public class PublicDiscoveryService {
 
     public List<PublicRoomResponse> getPublicRooms(User currentUser) {
         List<Room> publicRooms = roomRepository.findAllByVisibilityAndActiveTrue(RoomVisibility.PUBLIC);
-        Set<Long> myRoomIds = getMyRoomIds(currentUser);
-
-        List<Room> filteredRooms = publicRooms;
-
-        return filteredRooms.stream()
+        return publicRooms.stream()
                 .map(this::toPublicRoomResponse)
                 .toList();
     }
@@ -58,15 +54,7 @@ public class PublicDiscoveryService {
 
     public List<PublicLiveLessonResponse> getPublicLiveLessons(User currentUser) {
         List<LiveSession> sessions = liveSessionRepository.findAllByActiveTrueAndLessonScheduleRoomVisibility(RoomVisibility.PUBLIC);
-        Set<Long> myRoomIds = getMyRoomIds(currentUser);
-
-        List<LiveSession> filtered = isTeacherOrStudent(currentUser)
-                ? sessions.stream()
-                .filter(session -> myRoomIds.contains(session.getLessonSchedule().getRoom().getId()))
-                .toList()
-                : sessions;
-
-        return filtered.stream()
+        return sessions.stream()
                 .map(this::toLiveLessonResponse)
                 .toList();
     }
@@ -87,6 +75,46 @@ public class PublicDiscoveryService {
     private PrivateRoomResponse toPrivateRoomResponse(Room room, User currentUser) {
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId()).orElse(null);
         boolean canModerate = member != null && (member.getRole() == RoomMemberRole.OWNER || member.getRole() == RoomMemberRole.TEACHER);
+
+        boolean canViewPrivateDetails = isSuperScope(currentUser) || member != null;
+        if (!canViewPrivateDetails) {
+            return PrivateRoomResponse.builder()
+                    .roomId(room.getId())
+                    .title(room.getTitle())
+                    .subject(room.getSubject())
+                    .description(room.getDescription())
+                    .visibility(room.getVisibility())
+                    .active(room.isActive())
+                    .ownerId(room.getOwner().getId())
+                    .ownerName(room.getOwner().getFullName())
+                    .ownerEmail(null)
+                    .memberCount(roomMemberRepository.countByRoomIdAndActiveTrue(room.getId()))
+                    .teacherCount(0)
+                    .activeLessonCount(0)
+                    .weeklyLessonCount(0)
+                    .resourceCount(0)
+                    .liveNow(false)
+                    .pendingJoinRequestCount(0)
+                    .joinCount30d(0)
+                    .createdAt(room.getDatetimeCreated())
+                    .updatedAt(room.getDatetimeUpdated())
+                    .lastLessonAt(null)
+                    .lastMaterialAt(null)
+                    .lastActiveAt(null)
+                    .upcomingLessons(List.of())
+                    .recentMaterials(List.of())
+                    .myRole(null)
+                    .canManageRoom(false)
+                    .canInviteMembers(false)
+                    .canScheduleLesson(false)
+                    .canUploadMaterials(false)
+                    .myPendingJoinRequest(roomJoinRequestRepository.existsByRoomIdAndRequesterIdAndStatus(
+                            room.getId(),
+                            currentUser.getId(),
+                            RoomJoinRequestStatus.PENDING
+                    ))
+                    .build();
+        }
 
         return PrivateRoomResponse.builder()
                 .roomId(room.getId())

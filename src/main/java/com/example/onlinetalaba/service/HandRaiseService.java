@@ -5,6 +5,8 @@ import com.example.onlinetalaba.dto.live.HandRaiseResponse;
 import com.example.onlinetalaba.entity.*;
 import com.example.onlinetalaba.enums.HandRaiseStatus;
 import com.example.onlinetalaba.enums.LiveSessionStatus;
+import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.HandRaiseRepository;
@@ -38,7 +40,7 @@ public class HandRaiseService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
+        roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         HandRaise handRaise = handRaiseRepository
                 .findByLiveSessionIdAndUserIdAndActiveTrue(liveSessionId, currentUser.getId())
@@ -72,10 +74,20 @@ public class HandRaiseService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        boolean canModerate = roomService.hasFullAccess(handRaise.getLiveSession().getLessonSchedule().getRoom(), currentUser);
+        if (currentUser.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN) {
+            // ok
+        } else {
+            RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
+                            handRaise.getLiveSession().getLessonSchedule().getRoom().getId(),
+                            currentUser.getId())
+                    .orElseThrow(() -> new ForbiddenException("Access denied"));
 
-        if (!canModerate) {
-            throw new ForbiddenException("You do not have permission to process hand raises");
+            boolean canModerate = member.getRole() == RoomMemberRole.OWNER
+                    || member.getRole() == RoomMemberRole.TEACHER;
+
+            if (!canModerate) {
+                throw new ForbiddenException("You do not have permission to process hand raises");
+            }
         }
 
         handRaise.setStatus(request.getStatus());
@@ -99,7 +111,7 @@ public class HandRaiseService {
             throw new ForbiddenException("Live session is not active");
         }
 
-        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
+        roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         return handRaiseRepository.findAllByLiveSessionIdAndActiveTrueOrderByRequestedAtAsc(liveSessionId)
                 .stream()

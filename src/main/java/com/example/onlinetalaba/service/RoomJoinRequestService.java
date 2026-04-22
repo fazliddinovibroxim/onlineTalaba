@@ -10,6 +10,7 @@ import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.enums.RoomJoinRequestStatus;
 import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.enums.RoomVisibility;
 import com.example.onlinetalaba.handler.ConflictException;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
@@ -36,6 +37,10 @@ public class RoomJoinRequestService {
     @Transactional
     public RoomJoinRequestResponse create(Long roomId, RoomJoinRequestRequest request, User currentUser) {
         Room room = getActiveRoom(roomId);
+
+        if (room.getVisibility() != RoomVisibility.PRIVATE) {
+            throw new ConflictException("Join request is only required for private rooms");
+        }
 
         if (roomMemberRepository.existsByRoomIdAndUserId(roomId, currentUser.getId())) {
             throw new ConflictException("User already exists in this room");

@@ -2,7 +2,6 @@ package com.example.onlinetalaba.component;
 
 import com.example.onlinetalaba.entity.Role;
 import com.example.onlinetalaba.entity.User;
-import com.example.onlinetalaba.enums.AppPermissions;
 import com.example.onlinetalaba.enums.AppRoleName;
 import com.example.onlinetalaba.enums.UserGender;
 import com.example.onlinetalaba.repository.RoleRepository;
@@ -13,8 +12,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-
-import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -32,14 +29,9 @@ public class DataLoader implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if ("always".equals(mode)) {
 
-            // SUPER_ADMIN role
+            // Roles are created in RoleInitializer; here we only ensure admin user exists.
             Role saveAdmin = roleRepository.findByAppRoleName(AppRoleName.SUPER_ADMIN)
-                    .orElseGet(() -> {
-                        Role admin = new Role();
-                        admin.setAppRoleName(AppRoleName.SUPER_ADMIN);
-                        admin.setAppPermissions(Set.of(AppPermissions.values()));
-                        return roleRepository.save(admin);
-                    });
+                    .orElseThrow(() -> new IllegalStateException("SUPER_ADMIN role is missing"));
 
             // admin user
             User existingAdmin = userRepository.findByEmail("admin@gmail.com");
@@ -56,14 +48,6 @@ public class DataLoader implements ApplicationRunner {
                 authUserAdmin.setGender(UserGender.MALE);
                 userRepository.save(authUserAdmin);
             }
-
-            // USER role
-            roleRepository.findByAppRoleName(AppRoleName.USER)
-                    .orElseGet(() -> {
-                        Role userRole = new Role();
-                        userRole.setAppRoleName(AppRoleName.USER);
-                        return roleRepository.save(userRole);
-                    });
         }
     }
 }

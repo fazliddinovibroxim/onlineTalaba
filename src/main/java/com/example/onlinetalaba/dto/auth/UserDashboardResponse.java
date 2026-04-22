@@ -22,6 +22,14 @@ public class UserDashboardResponse {
     private AppRoleName role;
     private UserGender gender;
     private Set<AppPermissions> permissions;
+
+    // Quick ids for client-side filtering/navigation
+    private List<Long> ownedRoomIds;
+    private List<Long> memberRoomIds;
+    private List<Long> memberPublicRoomIds;
+    private List<Long> memberPrivateRoomIds;
+    private List<Long> joinRequestRoomIdsSent;
+
     private DashboardStatsResponse stats;
     private List<DashboardRoomResponse> myRooms;
     private List<DashboardRoomResponse> discoverRooms;

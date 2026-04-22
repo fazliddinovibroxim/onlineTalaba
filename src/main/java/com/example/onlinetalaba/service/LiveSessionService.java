@@ -82,7 +82,7 @@ public class LiveSessionService {
             throw new ForbiddenException("Room is not active");
         }
 
-        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
+        roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
                         session.getLessonSchedule().getRoom().getId(),
@@ -143,7 +143,7 @@ public class LiveSessionService {
             throw new ForbiddenException("Room is not active");
         }
 
-        roomService.validateFullAccess(session.getLessonSchedule().getRoom(), currentUser);
+        roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         return mapToResponse(session);
     }

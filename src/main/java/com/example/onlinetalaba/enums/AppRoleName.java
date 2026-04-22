@@ -5,5 +5,5 @@ public enum AppRoleName {
     ADMIN,
     USER,
     TEACHER,
-    STUDENT,
+    STUDENT
 }
