@@ -3,6 +3,7 @@ package com.example.onlinetalaba.config;
 import com.example.onlinetalaba.security.JwtAuthService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -51,6 +52,9 @@ public class SecurityConfig {
                                 "/v3/api-docs.yaml",
                                 "/webjars/**"
                         ).permitAll()
+                        // Public catalog/library browsing endpoints should work without auth.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/library/materials/my").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthService, UsernamePasswordAuthenticationFilter.class)

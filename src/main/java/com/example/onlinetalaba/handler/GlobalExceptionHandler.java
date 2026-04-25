@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -89,14 +91,19 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
             HttpMessageNotReadableException.class,
+            MultipartException.class,
             IllegalArgumentException.class
     })
     public ResponseEntity<ApiErrorResponse> handleBadRequestExceptions(
             Exception e,
             HttpServletRequest request
     ) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ErrorCodes.BadRequest.getName(), e.getMessage(), request, null);
+        String message = e instanceof MultipartException
+                ? "Invalid multipart request"
+                : (e.getMessage() == null ? "Bad request" : e.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, ErrorCodes.BadRequest.getName(), message, request, null);
     }
 
     @ExceptionHandler({

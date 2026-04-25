@@ -179,7 +179,9 @@ public class PublicCatalogService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime weekLater = now.plusDays(7);
 
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId()).orElse(null);
+        RoomMember member = currentUser == null
+                ? null
+                : roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(room.getId(), currentUser.getId()).orElse(null);
 
         boolean canModerate = isSuperScope(currentUser)
                 || (member != null && (member.getRole() == RoomMemberRole.OWNER || member.getRole() == RoomMemberRole.TEACHER));
@@ -217,7 +219,7 @@ public class PublicCatalogService {
                     .canInviteMembers(false)
                     .canScheduleLesson(false)
                     .canUploadMaterials(false)
-                    .myPendingJoinRequest(roomJoinRequestRepository.existsByRoomIdAndRequesterIdAndStatus(
+                    .myPendingJoinRequest(currentUser != null && roomJoinRequestRepository.existsByRoomIdAndRequesterIdAndStatus(
                             room.getId(),
                             currentUser.getId(),
                             RoomJoinRequestStatus.PENDING
@@ -286,7 +288,7 @@ public class PublicCatalogService {
                 .canInviteMembers(member != null && (member.getRole() == RoomMemberRole.OWNER || member.isCanInviteMembers()))
                 .canScheduleLesson(member != null && (member.getRole() == RoomMemberRole.OWNER || member.isCanScheduleLesson()))
                 .canUploadMaterials(member != null && (member.getRole() == RoomMemberRole.OWNER || member.isCanUploadMaterials()))
-                .myPendingJoinRequest(roomJoinRequestRepository.existsByRoomIdAndRequesterIdAndStatus(
+                .myPendingJoinRequest(currentUser != null && roomJoinRequestRepository.existsByRoomIdAndRequesterIdAndStatus(
                         room.getId(),
                         currentUser.getId(),
                         RoomJoinRequestStatus.PENDING
@@ -336,6 +338,9 @@ public class PublicCatalogService {
 
     private boolean isSuperScope(User currentUser) {
         // Used for join-request moderation counters in private room cards.
+        if (currentUser == null || currentUser.getRoles() == null) {
+            return false;
+        }
         AppRoleName role = currentUser.getRoles().getAppRoleName();
         return role == AppRoleName.SUPER_ADMIN || role == AppRoleName.ADMIN;
     }

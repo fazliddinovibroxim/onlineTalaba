@@ -27,6 +27,7 @@ public class HandRaiseService {
     private final LiveSessionRepository liveSessionRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final RoomService roomService;
+    private final LiveSessionService liveSessionService;
 
     @Transactional
     public HandRaiseResponse raiseHand(Long liveSessionId, User currentUser) {
@@ -59,6 +60,41 @@ public class HandRaiseService {
         handRaise.setProcessedBy(null);
 
         handRaiseRepository.save(handRaise);
+        liveSessionService.updateParticipantHandRaised(liveSessionId, currentUser, true);
+        return mapToResponse(handRaise);
+    }
+
+    @Transactional
+    public HandRaiseResponse cancelHand(Long liveSessionId, User currentUser) {
+        LiveSession session = liveSessionRepository.findById(liveSessionId)
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+        if (!session.isActive() || session.getStatus() != LiveSessionStatus.LIVE) {
+            throw new ForbiddenException("Live session is not active");
+        }
+
+        roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
+
+        HandRaise handRaise = handRaiseRepository
+                .findByLiveSessionIdAndUserIdAndActiveTrue(liveSessionId, currentUser.getId())
+                .orElse(null);
+
+        if (handRaise == null) {
+            // Idempotent cancel: still ensure participant flag is lowered.
+            liveSessionService.updateParticipantHandRaised(liveSessionId, currentUser, false);
+            return null;
+        }
+
+        handRaise.setStatus(HandRaiseStatus.CANCELLED);
+        handRaise.setActive(false);
+        handRaise.setProcessedAt(LocalDateTime.now());
+        handRaise.setProcessedBy(currentUser);
+        handRaiseRepository.save(handRaise);
+
+        liveSessionService.updateParticipantHandRaised(liveSessionId, currentUser, false);
         return mapToResponse(handRaise);
     }
 
@@ -96,6 +132,11 @@ public class HandRaiseService {
         handRaise.setActive(request.getStatus() == HandRaiseStatus.PENDING);
 
         handRaiseRepository.save(handRaise);
+        liveSessionService.updateParticipantHandRaised(
+                handRaise.getLiveSession().getId(),
+                handRaise.getUser(),
+                request.getStatus() == HandRaiseStatus.PENDING
+        );
         return mapToResponse(handRaise);
     }
 

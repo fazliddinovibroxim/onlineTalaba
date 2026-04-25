@@ -6,5 +6,6 @@ public enum WhiteboardEventType {
     TEXT,
     SHAPE,
     CLEAR,
-    SNAPSHOT
+    SNAPSHOT,
+    TOGGLE
 }

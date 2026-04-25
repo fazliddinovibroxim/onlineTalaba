@@ -7,6 +7,7 @@ import com.example.onlinetalaba.enums.LibraryMaterialType;
 import com.example.onlinetalaba.security.CurrentUser;
 import com.example.onlinetalaba.service.PublicLibraryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,13 +29,15 @@ public class PublicLibraryController {
 
     private final PublicLibraryService publicLibraryService;
 
-    @PostMapping(value = "/materials", consumes = {"multipart/form-data"})
+    @PostMapping(value = "/materials", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PublicLibraryMaterialResponse> upload(
             @RequestPart("data") PublicLibraryUploadRequest request,
-            @RequestPart("file") MultipartFile file,
+            @RequestPart(value = "files", required = false) MultipartFile[] files,
+            // Backward-compat: some clients send a single part named "file"
+            @RequestPart(value = "file", required = false) MultipartFile file,
             @CurrentUser User currentUser
     ) throws IOException {
-        return ResponseEntity.ok(publicLibraryService.upload(request, file, currentUser));
+        return ResponseEntity.ok(publicLibraryService.upload(request, files, file, currentUser));
     }
 
     @GetMapping("/materials")

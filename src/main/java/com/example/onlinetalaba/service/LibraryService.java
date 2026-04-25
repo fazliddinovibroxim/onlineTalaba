@@ -9,6 +9,7 @@ import com.example.onlinetalaba.entity.Room;
 import com.example.onlinetalaba.entity.RoomMember;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.enums.RoomMemberRole;
+import com.example.onlinetalaba.handler.BadRequestException;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.LibraryMaterialRepository;
@@ -34,9 +35,10 @@ public class LibraryService {
     private final RoomService roomService;
 
     public LibraryMaterialResponse uploadToRoom(Long roomId,
-                                                LibraryMaterialRequest request,
-                                                MultipartFile file,
-                                                User currentUser) throws IOException {
+                                               LibraryMaterialRequest request,
+                                               MultipartFile[] files,
+                                               MultipartFile legacyFile,
+                                               User currentUser) throws IOException {
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
@@ -45,19 +47,28 @@ public class LibraryService {
             throw new ForbiddenException("Room is not active");
         }
 
+        if (request == null) {
+            throw new BadRequestException("Upload data is required");
+        }
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new BadRequestException("Title is required");
+        }
+        if (request.getMaterialType() == null) {
+            throw new BadRequestException("Material type is required");
+        }
+
+        MultipartFile file = resolveSingleFile(files, legacyFile);
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File is required");
+        }
+
         RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
-
-        if (!(member.getRole() == RoomMemberRole.OWNER
-                || member.getRole() == RoomMemberRole.TEACHER
-                || member.isCanUploadMaterials())) {
-            throw new ForbiddenException("You do not have permission to upload materials");
-        }
 
         LibraryMaterial material = LibraryMaterial.builder()
                 .room(room)
                 .uploadedBy(currentUser)
-                .title(request.getTitle())
+                .title(request.getTitle().trim())
                 .description(request.getDescription())
                 .materialType(request.getMaterialType())
                 .active(true)
@@ -71,6 +82,14 @@ public class LibraryService {
         material = libraryMaterialRepository.save(material);
 
         return toResponse(material);
+    }
+
+    private MultipartFile resolveSingleFile(MultipartFile[] files, MultipartFile legacyFile) {
+        if (files != null && files.length > 0) {
+            // Many clients always send an array (files[]) even when uploading one file.
+            return files[0];
+        }
+        return legacyFile;
     }
 
     public List<LibraryMaterialResponse> getAllByRoom(Long roomId, User currentUser) {

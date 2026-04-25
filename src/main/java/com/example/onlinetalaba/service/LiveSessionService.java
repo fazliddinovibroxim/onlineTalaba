@@ -1,6 +1,8 @@
 package com.example.onlinetalaba.service;
 
 import com.example.onlinetalaba.dto.live.LiveKitTokenResponse;
+import com.example.onlinetalaba.dto.live.LiveParticipantDto;
+import com.example.onlinetalaba.dto.live.LiveParticipantsResponse;
 import com.example.onlinetalaba.dto.live.LiveSessionResponse;
 import com.example.onlinetalaba.entity.*;
 import com.example.onlinetalaba.enums.*;
@@ -8,21 +10,30 @@ import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
 import com.example.onlinetalaba.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class LiveSessionService {
 
+    private static final Duration OFFLINE_AFTER = Duration.ofSeconds(90);
+
     private final LessonScheduleRepository lessonScheduleRepository;
     private final LiveSessionRepository liveSessionRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final HandRaiseRepository handRaiseRepository;
+    private final LiveSessionParticipantRepository liveSessionParticipantRepository;
     private final LiveKitTokenService liveKitTokenService;
     private final RoomService roomService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public LiveSessionResponse createOrStart(Long lessonScheduleId, User currentUser) {
@@ -146,6 +157,127 @@ public class LiveSessionService {
         roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
 
         return mapToResponse(session);
+    }
+
+    /**
+     * WebSocket: /app/stream/{liveSessionId}/join
+     */
+    @Transactional
+    public void trackJoin(Long liveSessionId, User currentUser) {
+        LiveSession session = liveSessionRepository.findById(liveSessionId)
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+        validateLiveSessionIsJoinable(session);
+        roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
+
+        upsertParticipant(session, currentUser, null, true);
+        broadcastParticipants(liveSessionId);
+    }
+
+    /**
+     * WebSocket: /app/stream/{liveSessionId}/heartbeat
+     */
+    @Transactional
+    public void trackHeartbeat(Long liveSessionId, User currentUser) {
+        LiveSession session = liveSessionRepository.findById(liveSessionId)
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+        validateLiveSessionIsJoinable(session);
+        roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
+
+        upsertParticipant(session, currentUser, null, false);
+        broadcastParticipants(liveSessionId);
+    }
+
+    /**
+     * Called from HandRaise flow to keep participants list in sync without duplicating endpoints.
+     */
+    @Transactional
+    public void updateParticipantHandRaised(Long liveSessionId, User user, boolean handRaised) {
+        LiveSession session = liveSessionRepository.findById(liveSessionId)
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+        if (!session.isActive() || session.getStatus() != LiveSessionStatus.LIVE) {
+            return;
+        }
+
+        upsertParticipant(session, user, handRaised, true);
+        broadcastParticipants(liveSessionId);
+    }
+
+    @Transactional(readOnly = true)
+    public LiveParticipantsResponse getLiveParticipants(Long liveSessionId) {
+        LiveSession session = liveSessionRepository.findById(liveSessionId)
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        Long roomId = session.getLessonSchedule().getRoom().getId();
+        Map<Long, RoomMemberRole> rolesByUserId = new HashMap<>();
+        for (RoomMember m : roomMemberRepository.findAllByRoomIdAndActiveTrue(roomId)) {
+            rolesByUserId.put(m.getUser().getId(), m.getRole());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime onlineAfter = now.minusSeconds(OFFLINE_AFTER.toSeconds());
+
+        List<LiveParticipantDto> participants = liveSessionParticipantRepository
+                .findAllByLiveSessionIdOrderByJoinedAtAsc(liveSessionId)
+                .stream()
+                .map(p -> LiveParticipantDto.builder()
+                        .userId(p.getUser().getId())
+                        .fullName(p.getUser().getFullName())
+                        .username(p.getUser().getUsername())
+                        .roomRole(rolesByUserId.getOrDefault(p.getUser().getId(), null))
+                        .handRaised(p.isHandRaised())
+                        .online(p.getLastSeenAt() != null && !p.getLastSeenAt().isBefore(onlineAfter))
+                        .joinedAt(p.getJoinedAt())
+                        .lastSeenAt(p.getLastSeenAt())
+                        .build())
+                .toList();
+
+        long onlineCount = participants.stream().filter(LiveParticipantDto::isOnline).count();
+        return LiveParticipantsResponse.builder()
+                .liveSessionId(liveSessionId)
+                .onlineCount(onlineCount)
+                .serverTime(now)
+                .participants(participants)
+                .build();
+    }
+
+    public void broadcastParticipants(Long liveSessionId) {
+        LiveParticipantsResponse response = getLiveParticipants(liveSessionId);
+        messagingTemplate.convertAndSend("/topic/stream/" + liveSessionId + "/participants", response);
+    }
+
+    private void upsertParticipant(LiveSession session, User user, Boolean handRaised, boolean touchJoinedAt) {
+        LiveSessionParticipant participant = liveSessionParticipantRepository
+                .findByLiveSessionIdAndUserId(session.getId(), user.getId())
+                .orElseGet(() -> LiveSessionParticipant.builder()
+                        .liveSession(session)
+                        .user(user)
+                        .joinedAt(LocalDateTime.now())
+                        .handRaised(false)
+                        .lastSeenAt(LocalDateTime.now())
+                        .build());
+
+        if (touchJoinedAt && participant.getJoinedAt() == null) {
+            participant.setJoinedAt(LocalDateTime.now());
+        }
+
+        participant.setLastSeenAt(LocalDateTime.now());
+        if (handRaised != null) {
+            participant.setHandRaised(handRaised);
+        }
+
+        liveSessionParticipantRepository.save(participant);
     }
 
     private LiveSessionResponse mapToResponse(LiveSession session) {

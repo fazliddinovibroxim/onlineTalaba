@@ -34,8 +34,9 @@ public class PublicLibraryService {
 
     @Transactional
     public PublicLibraryMaterialResponse upload(PublicLibraryUploadRequest request,
-                                                MultipartFile file,
-                                                User currentUser) throws IOException {
+                                               MultipartFile[] files,
+                                               MultipartFile legacyFile,
+                                               User currentUser) throws IOException {
         if (request == null) {
             throw new BadRequestException("Upload data is required");
         }
@@ -46,6 +47,11 @@ public class PublicLibraryService {
 
         if (request.getMaterialType() == null) {
             throw new BadRequestException("Material type is required");
+        }
+
+        MultipartFile file = resolveSingleFile(files, legacyFile);
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File is required");
         }
 
         String fileUrl = attachmentService.uploadChatFile(file);
@@ -66,6 +72,13 @@ public class PublicLibraryService {
 
         publicLibraryMaterialRepository.save(material);
         return toResponse(material);
+    }
+
+    private MultipartFile resolveSingleFile(MultipartFile[] files, MultipartFile legacyFile) {
+        if (files != null && files.length > 0) {
+            return files[0];
+        }
+        return legacyFile;
     }
 
     @Transactional(readOnly = true)
