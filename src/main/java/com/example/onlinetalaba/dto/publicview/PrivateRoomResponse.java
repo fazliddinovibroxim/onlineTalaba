@@ -2,6 +2,7 @@ package com.example.onlinetalaba.dto.publicview;
 
 import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.enums.RoomVisibility;
+import com.example.onlinetalaba.enums.UserGender;
 import lombok.Builder;
 import lombok.Data;
 
@@ -21,6 +22,7 @@ public class PrivateRoomResponse {
     private Long ownerId;
     private String ownerName;
     private String ownerEmail;
+    private UserGender userGender;
 
     private long memberCount;
     private long teacherCount;

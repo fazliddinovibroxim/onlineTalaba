@@ -67,6 +67,7 @@ public class PublicDiscoveryService {
                 .description(room.getDescription())
                 .ownerId(room.getOwner().getId())
                 .ownerName(room.getOwner().getFullName())
+                .ownerGender(room.getOwner().getGender())
                 .memberCount(roomMemberRepository.countByRoomIdAndActiveTrue(room.getId()))
                 .liveNow(liveSessionRepository.existsByLessonScheduleRoomIdAndActiveTrue(room.getId()))
                 .build();
@@ -88,6 +89,7 @@ public class PublicDiscoveryService {
                     .ownerId(room.getOwner().getId())
                     .ownerName(room.getOwner().getFullName())
                     .ownerEmail(null)
+                    .userGender(room.getOwner().getGender())
                     .memberCount(roomMemberRepository.countByRoomIdAndActiveTrue(room.getId()))
                     .teacherCount(0)
                     .activeLessonCount(0)

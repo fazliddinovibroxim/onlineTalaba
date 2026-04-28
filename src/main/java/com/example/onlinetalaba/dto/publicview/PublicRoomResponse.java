@@ -1,5 +1,6 @@
 package com.example.onlinetalaba.dto.publicview;
 
+import com.example.onlinetalaba.enums.UserGender;
 import lombok.Builder;
 import lombok.Data;
 
@@ -12,6 +13,7 @@ public class PublicRoomResponse {
     private String description;
     private Long ownerId;
     private String ownerName;
+    private UserGender ownerGender;
     private long memberCount;
     private boolean liveNow;
 }

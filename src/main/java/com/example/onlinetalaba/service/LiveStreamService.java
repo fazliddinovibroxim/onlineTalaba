@@ -33,9 +33,7 @@ public class LiveStreamService {
     private final LessonScheduleRepository lessonScheduleRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * Requirement: startLesson(sessionId) -> make session ACTIVE/LIVE and set startedAt.
-     */
+
     @Transactional
     public LiveSession startLesson(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
