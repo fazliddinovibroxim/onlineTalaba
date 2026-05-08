@@ -79,10 +79,13 @@ public class LiveSessionService {
         liveSessionRepository.save(session);
         lessonScheduleRepository.save(lesson);
 
+        upsertParticipant(session, currentUser, null, true);
+        broadcastParticipants(session.getId());
+
         return mapToResponse(session);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LiveKitTokenResponse issueToken(Long liveSessionId, User currentUser) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
@@ -108,6 +111,9 @@ public class LiveSessionService {
                 currentUser.getFullName(),
                 canPublish
         );
+
+        upsertParticipant(session, currentUser, null, true);
+        broadcastParticipants(liveSessionId);
 
         return LiveKitTokenResponse.builder()
                 .serverUrl(liveKitTokenService.serverUrl())
@@ -215,10 +221,27 @@ public class LiveSessionService {
     }
 
     @Transactional(readOnly = true)
+    public LiveParticipantsResponse getLiveParticipants(Long liveSessionId, User currentUser) {
+        LiveSession session = liveSessionRepository.findById(liveSessionId)
+                .orElseThrow(() -> new NotFoundException("Live session not found"));
+
+        if (!session.getLessonSchedule().getRoom().isActive()) {
+            throw new ForbiddenException("Room is not active");
+        }
+
+        validateCanViewParticipants(session, currentUser);
+        return buildLiveParticipantsResponse(session);
+    }
+
+    @Transactional(readOnly = true)
     public LiveParticipantsResponse getLiveParticipants(Long liveSessionId) {
         LiveSession session = liveSessionRepository.findById(liveSessionId)
                 .orElseThrow(() -> new NotFoundException("Live session not found"));
 
+        return buildLiveParticipantsResponse(session);
+    }
+
+    private LiveParticipantsResponse buildLiveParticipantsResponse(LiveSession session) {
         Long roomId = session.getLessonSchedule().getRoom().getId();
         Map<Long, RoomMemberRole> rolesByUserId = new HashMap<>();
         for (RoomMember m : roomMemberRepository.findAllByRoomIdAndActiveTrue(roomId)) {
@@ -229,7 +252,7 @@ public class LiveSessionService {
         LocalDateTime onlineAfter = now.minusSeconds(OFFLINE_AFTER.toSeconds());
 
         List<LiveParticipantDto> participants = liveSessionParticipantRepository
-                .findAllByLiveSessionIdOrderByJoinedAtAsc(liveSessionId)
+                .findAllByLiveSessionIdOrderByJoinedAtAsc(session.getId())
                 .stream()
                 .map(p -> LiveParticipantDto.builder()
                         .userId(p.getUser().getId())
@@ -245,11 +268,31 @@ public class LiveSessionService {
 
         long onlineCount = participants.stream().filter(LiveParticipantDto::isOnline).count();
         return LiveParticipantsResponse.builder()
-                .liveSessionId(liveSessionId)
+                .liveSessionId(session.getId())
                 .onlineCount(onlineCount)
                 .serverTime(now)
                 .participants(participants)
                 .build();
+    }
+
+    private void validateCanViewParticipants(LiveSession session, User currentUser) {
+        if (currentUser.getRoles().getAppRoleName() == AppRoleName.SUPER_ADMIN
+                || currentUser.getRoles().getAppRoleName() == AppRoleName.ADMIN) {
+            return;
+        }
+
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(
+                        session.getLessonSchedule().getRoom().getId(),
+                        currentUser.getId())
+                .orElseThrow(() -> new ForbiddenException("Access denied"));
+
+        boolean canView = member.getRole() == RoomMemberRole.OWNER
+                || member.getRole() == RoomMemberRole.TEACHER
+                || (session.getHost() != null && session.getHost().getId().equals(currentUser.getId()));
+
+        if (!canView) {
+            throw new ForbiddenException("Only teacher can view live participants");
+        }
     }
 
     public void broadcastParticipants(Long liveSessionId) {

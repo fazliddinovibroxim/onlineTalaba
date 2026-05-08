@@ -1,6 +1,7 @@
 package com.example.onlinetalaba.controller;
 
 import com.example.onlinetalaba.dto.live.LiveKitTokenResponse;
+import com.example.onlinetalaba.dto.live.LiveParticipantsResponse;
 import com.example.onlinetalaba.dto.live.LiveSessionResponse;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.security.CurrentUser;
@@ -38,6 +39,14 @@ public class LiveSessionController {
             @CurrentUser User currentUser
     ) {
         return ResponseEntity.ok(liveSessionService.issueToken(liveSessionId, currentUser));
+    }
+
+    @GetMapping("/{liveSessionId}/participants")
+    public ResponseEntity<LiveParticipantsResponse> getParticipants(
+            @PathVariable Long liveSessionId,
+            @CurrentUser User currentUser
+    ) {
+        return ResponseEntity.ok(liveSessionService.getLiveParticipants(liveSessionId, currentUser));
     }
 
     @PostMapping("/{liveSessionId}/end")
