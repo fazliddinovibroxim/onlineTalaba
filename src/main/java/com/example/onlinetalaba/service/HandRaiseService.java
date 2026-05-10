@@ -161,11 +161,13 @@ public class HandRaiseService {
     }
 
     private HandRaiseResponse mapToResponse(HandRaise handRaise) {
+        String displayName = handRaise.getUser().getFullName() != null ? 
+                handRaise.getUser().getFullName() : handRaise.getUser().getUsername();
         return HandRaiseResponse.builder()
                 .id(handRaise.getId())
                 .liveSessionId(handRaise.getLiveSession().getId())
                 .userId(handRaise.getUser().getId())
-                .userName(handRaise.getUser().getFullName())
+                .userName(displayName)
                 .status(handRaise.getStatus())
                 .requestedAt(handRaise.getRequestedAt())
                 .processedAt(handRaise.getProcessedAt())
