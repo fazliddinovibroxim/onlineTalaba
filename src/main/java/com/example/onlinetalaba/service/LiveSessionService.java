@@ -34,6 +34,7 @@ public class LiveSessionService {
     private final LiveKitTokenService liveKitTokenService;
     private final RoomService roomService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final RoomNotificationService roomNotificationService;
 
     @Transactional
     public LiveSessionResponse createOrStart(Long lessonScheduleId, User currentUser) {
@@ -81,6 +82,13 @@ public class LiveSessionService {
 
         upsertParticipant(session, currentUser, null, true);
         broadcastParticipants(session.getId());
+
+        roomNotificationService.notifyLessonStarted(
+                lesson.getRoom().getId(),
+                session.getId(),
+                lesson.getId(),
+                lesson.getTitle()   // LessonSchedule da title field bor deb taxmin
+        );
 
         return mapToResponse(session);
     }
@@ -149,6 +157,14 @@ public class LiveSessionService {
 
         liveSessionRepository.save(session);
         lessonScheduleRepository.save(lesson);
+
+        // ← faqat shu qo'shiladi
+        roomNotificationService.notifyLessonEnded(
+                session.getLessonSchedule().getRoom().getId(),
+                liveSessionId,
+                session.getLessonSchedule().getTitle()
+        );
+
     }
 
     @Transactional(readOnly = true)

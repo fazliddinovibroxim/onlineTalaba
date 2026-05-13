@@ -42,17 +42,90 @@ public class AttachmentService {
     private String baseUrl;
 
     public Attachment uploadLibraryFile(MultipartFile file, LibraryMaterial libraryMaterial) throws IOException {
-        Attachment attachment = storeAttachment(file);
-        attachment.setLibraryMaterial(libraryMaterial);
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File is empty");
+        }
+
+        createUploadDirIfNeeded(); // template dagi kabi
+
+        String ext = getExtension(file.getOriginalFilename());
+        String serverName = UUID.randomUUID() + ext;
+
+        Path uploadPath = Paths.get(uploadDirectory).toAbsolutePath().normalize();
+        Files.createDirectories(uploadPath);
+
+        Path targetLocation = uploadPath.resolve(serverName);
+        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+        Attachment attachment = Attachment.builder()
+                .serverName(serverName)
+                .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : serverName)
+                .contentType(file.getContentType())
+                .size(file.getSize())
+                .fileUrl(baseUrl + serverName) // template dagi kabi, sodda
+                .libraryMaterial(libraryMaterial) // builder da o'zida set
+                .build();
+
         return attachmentRepository.save(attachment);
     }
 
     public String uploadChatImage(MultipartFile file) throws IOException {
-        return uploadChatFile(file, true);
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File is empty");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+            throw new BadRequestException("Only image files are allowed");
+        }
+
+        createUploadDirIfNeeded();
+
+        String ext = getExtension(file.getOriginalFilename());
+        String serverName = UUID.randomUUID() + ext;
+
+        Path uploadPath = Paths.get(uploadDirectory).toAbsolutePath().normalize();
+        Files.createDirectories(uploadPath);
+
+        Path targetLocation = uploadPath.resolve(serverName);
+        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+        Attachment attachment = Attachment.builder()
+                .serverName(serverName)
+                .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : serverName)
+                .contentType(contentType)
+                .size(file.getSize())
+                .fileUrl(baseUrl + serverName)
+                .build();
+
+        return attachmentRepository.save(attachment).getFileUrl();
     }
 
     public String uploadChatFile(MultipartFile file) throws IOException {
-        return uploadChatFile(file, false);
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File is empty");
+        }
+
+        createUploadDirIfNeeded();
+
+        String ext = getExtension(file.getOriginalFilename());
+        String serverName = UUID.randomUUID() + ext;
+
+        Path uploadPath = Paths.get(uploadDirectory).toAbsolutePath().normalize();
+        Files.createDirectories(uploadPath);
+
+        Path targetLocation = uploadPath.resolve(serverName);
+        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+        Attachment attachment = Attachment.builder()
+                .serverName(serverName)
+                .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : serverName)
+                .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
+                .size(file.getSize())
+                .fileUrl(baseUrl + serverName)
+                .build();
+
+        return attachmentRepository.save(attachment).getFileUrl();
     }
 
     private String uploadChatFile(MultipartFile file, boolean imageOnly) throws IOException {

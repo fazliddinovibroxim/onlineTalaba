@@ -35,10 +35,10 @@ public class LibraryService {
     private final RoomService roomService;
 
     public LibraryMaterialResponse uploadToRoom(Long roomId,
-                                               LibraryMaterialRequest request,
-                                               MultipartFile[] files,
-                                               MultipartFile legacyFile,
-                                               User currentUser) throws IOException {
+                                                LibraryMaterialRequest request,
+                                                MultipartFile[] files,
+                                                MultipartFile legacyFile,
+                                                User currentUser) throws IOException {
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
@@ -47,24 +47,15 @@ public class LibraryService {
             throw new ForbiddenException("Room is not active");
         }
 
-        if (request == null) {
-            throw new BadRequestException("Upload data is required");
-        }
-        if (request.getTitle() == null || request.getTitle().isBlank()) {
-            throw new BadRequestException("Title is required");
-        }
-        if (request.getMaterialType() == null) {
-            throw new BadRequestException("Material type is required");
-        }
-
         MultipartFile file = resolveSingleFile(files, legacyFile);
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File is required");
         }
 
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
+        roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 
+        // 1. Avval material saqla
         LibraryMaterial material = LibraryMaterial.builder()
                 .room(room)
                 .uploadedBy(currentUser)
@@ -76,17 +67,18 @@ public class LibraryService {
 
         material = libraryMaterialRepository.save(material);
 
+        // 2. Fayl yuklash (template kabi)
         Attachment attachment = attachmentService.uploadLibraryFile(file, material);
         material.setAttachment(attachment);
 
+        // 3. Ikkinchi marta saqlash (template kabi)
         material = libraryMaterialRepository.save(material);
 
         return toResponse(material);
     }
 
     private MultipartFile resolveSingleFile(MultipartFile[] files, MultipartFile legacyFile) {
-        if (files != null && files.length > 0) {
-            // Many clients always send an array (files[]) even when uploading one file.
+        if (files != null && files.length > 0 && !files[0].isEmpty()) {
             return files[0];
         }
         return legacyFile;

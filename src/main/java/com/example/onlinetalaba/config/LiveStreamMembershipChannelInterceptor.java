@@ -35,6 +35,9 @@ public class LiveStreamMembershipChannelInterceptor implements ChannelIntercepto
 
     private static final Pattern STREAM_DEST = Pattern.compile("^/(app|topic)/stream/(?<id>\\d+)(/.*)?$");
 
+    // Yangi pattern qo'shish:
+    private static final Pattern ROOM_NOTIF_DEST = Pattern.compile("^/topic/room/(?<id>\\d+)/notifications$");
+
     private final LiveSessionRepository liveSessionRepository;
     private final RoomMemberRepository roomMemberRepository;
 
@@ -53,6 +56,19 @@ public class LiveStreamMembershipChannelInterceptor implements ChannelIntercepto
         String destination = accessor.getDestination();
         if (destination == null || destination.isBlank()) {
             return message;
+        }
+
+        // ← yangi: room notification subscribe tekshiruvi
+        Matcher roomMatcher = ROOM_NOTIF_DEST.matcher(destination);
+        if (roomMatcher.matches()) {
+            if (cmd == StompCommand.SUBSCRIBE) {
+                Long roomId = Long.valueOf(roomMatcher.group("id"));
+                User currentUser = resolveUser(accessor);
+                roomMemberRepository
+                        .findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
+                        .orElseThrow(() -> new ForbiddenException("Access denied"));
+            }
+            return message; // SEND ga yo'l qo'yilmaydi (server only broadcast)
         }
 
         Matcher m = STREAM_DEST.matcher(destination);
