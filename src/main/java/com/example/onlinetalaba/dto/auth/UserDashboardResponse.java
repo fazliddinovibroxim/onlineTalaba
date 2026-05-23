@@ -1,5 +1,6 @@
 package com.example.onlinetalaba.dto.auth;
 
+import com.example.onlinetalaba.dto.chatroom.ChatRoomMeResponse;
 import com.example.onlinetalaba.dto.dashboard.*;
 import com.example.onlinetalaba.enums.AppPermissions;
 import com.example.onlinetalaba.enums.AppRoleName;
@@ -29,6 +30,7 @@ public class UserDashboardResponse {
     private List<Long> memberPublicRoomIds;
     private List<Long> memberPrivateRoomIds;
     private List<Long> joinRequestRoomIdsSent;
+    private List<ChatRoomMeResponse> chatRooms;
 
     private DashboardStatsResponse stats;
     private List<DashboardRoomResponse> myRooms;

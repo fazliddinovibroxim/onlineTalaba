@@ -195,8 +195,29 @@ public class LiveSessionService {
         validateLiveSessionIsJoinable(session);
         roomService.validateMemberAccess(session.getLessonSchedule().getRoom(), currentUser);
 
+        boolean notifyMemberJoined = shouldNotifyStreamMemberJoined(session.getId(), currentUser.getId());
+
         upsertParticipant(session, currentUser, null, true);
         broadcastParticipants(liveSessionId);
+
+        if (notifyMemberJoined) {
+            LessonSchedule lesson = session.getLessonSchedule();
+            roomNotificationService.notifyStreamMemberJoined(
+                    lesson.getRoom().getId(),
+                    session.getId(),
+                    lesson.getId(),
+                    lesson.getTitle(),
+                    currentUser
+            );
+        }
+    }
+
+    private boolean shouldNotifyStreamMemberJoined(Long liveSessionId, Long userId) {
+        LocalDateTime onlineAfter = LocalDateTime.now().minusSeconds(OFFLINE_AFTER.toSeconds());
+        return liveSessionParticipantRepository
+                .findByLiveSessionIdAndUserId(liveSessionId, userId)
+                .map(p -> p.getLastSeenAt() == null || p.getLastSeenAt().isBefore(onlineAfter))
+                .orElse(true);
     }
 
     /**

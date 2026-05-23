@@ -1,0 +1,17 @@
+package com.example.onlinetalaba.dto.chatroom;
+
+import com.example.onlinetalaba.dto.dashboard.UserSearchItemResponse;
+import lombok.Builder;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+public class ChatRoomResponse {
+    private Long id;
+    private UserSearchItemResponse otherUser;
+    private String lastMessageText;
+    private LocalDateTime lastMessageAt;
+    private long unreadCount;
+}

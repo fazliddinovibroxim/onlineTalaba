@@ -9,11 +9,14 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 public class RoomNotificationMessage {
-    private String type;          // "LESSON_STARTED", "LESSON_ENDED" va h.k.
+    private String type;
     private String title;
     private String body;
     private Long roomId;
     private Long liveSessionId;
     private Long lessonScheduleId;
+    private Long actorUserId;
+    private String actorUserName;
+    private Long commentId;
     private LocalDateTime timestamp;
 }

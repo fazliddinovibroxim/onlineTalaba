@@ -3,6 +3,9 @@ package com.example.onlinetalaba.service;
 import com.example.onlinetalaba.dto.auth.UserDashboardResponse;
 import com.example.onlinetalaba.dto.auth.UserDto;
 import com.example.onlinetalaba.dto.dashboard.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import com.example.onlinetalaba.entity.*;
 import com.example.onlinetalaba.enums.AppPermissions;
 import com.example.onlinetalaba.enums.AppRoleName;
@@ -33,6 +36,8 @@ import java.util.Set;
 public class UserDashboardService {
 
     private final UserRepository userRepository;
+    private final UserDashboardRepository userDashboardRepository;
+    private final ChatRoomService chatRoomService;
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final LessonScheduleRepository lessonScheduleRepository;
@@ -42,6 +47,55 @@ public class UserDashboardService {
     private final RoomJoinRequestRepository roomJoinRequestRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
+
+    @Transactional(readOnly = true)
+    public Page<UserSearchItemResponse> searchUsers(String q,
+                                                    String fullName,
+                                                    String username,
+                                                    String email,
+                                                    String phoneNumber,
+                                                    String address,
+                                                    Long excludeUserId,
+                                                    Pageable pageable) {
+        String normalizedQ = normalizeFilter(q);
+        String normalizedFullName = normalizeFilter(fullName);
+        String normalizedUsername = normalizeFilter(username);
+        String normalizedEmail = normalizeFilter(email);
+        String normalizedPhone = normalizeFilter(phoneNumber);
+        String normalizedAddress = normalizeFilter(address);
+
+        long total = userDashboardRepository.countByNativeQuery(
+                normalizedQ,
+                normalizedFullName,
+                normalizedUsername,
+                normalizedEmail,
+                normalizedPhone,
+                normalizedAddress,
+                excludeUserId
+        );
+
+        if (total == 0) {
+            return new PageImpl<>(List.of(), pageable, 0);
+        }
+
+        List<Object[]> rows = userDashboardRepository.findAllByNativeQuery(
+                normalizedQ,
+                normalizedFullName,
+                normalizedUsername,
+                normalizedEmail,
+                normalizedPhone,
+                normalizedAddress,
+                excludeUserId,
+                pageable.getPageSize(),
+                pageable.getOffset()
+        );
+
+        List<UserSearchItemResponse> content = rows.stream()
+                .map(this::mapUserSearchRow)
+                .toList();
+
+        return new PageImpl<>(content, pageable, total);
+    }
 
     @Transactional(readOnly = true)
     public UserDashboardResponse getUserDashboard(User currentUser) {
@@ -119,6 +173,9 @@ public class UserDashboardService {
                 .sorted()
                 .toList();
 
+        List<com.example.onlinetalaba.dto.chatroom.ChatRoomMeResponse> chatRooms =
+                chatRoomService.listMyRoomsForDashboard(user);
+
         List<RoomJoinRequest> moderatedRequests = memberships.stream()
                 .filter(member -> member.getRole().name().equals("OWNER") || member.getRole().name().equals("TEACHER"))
                 .flatMap(member -> roomJoinRequestRepository
@@ -150,6 +207,7 @@ public class UserDashboardService {
                 .memberPublicRoomIds(memberPublicRoomIds)
                 .memberPrivateRoomIds(memberPrivateRoomIds)
                 .joinRequestRoomIdsSent(joinRequestRoomIdsSent)
+                .chatRooms(chatRooms)
                 .stats(DashboardStatsResponse.builder()
                         .roomCount(myRooms.size())
                         .ownedRoomCount(myRooms.stream().filter(room -> room.getOwner().getId().equals(user.getId())).count())
@@ -216,6 +274,8 @@ public class UserDashboardService {
                 .distinct()
                 .sorted()
                 .toList();
+        List<com.example.onlinetalaba.dto.chatroom.ChatRoomMeResponse> chatRooms =
+                chatRoomService.listMyRoomsForDashboard(user);
 
         return UserDashboardResponse.builder()
                 .userId(user.getId())
@@ -231,6 +291,7 @@ public class UserDashboardService {
                 .memberPublicRoomIds(Collections.emptyList())
                 .memberPrivateRoomIds(Collections.emptyList())
                 .joinRequestRoomIdsSent(Collections.emptyList())
+                .chatRooms(chatRooms)
                 .stats(DashboardStatsResponse.builder()
                         .roomCount(allRooms.size())
                         .ownedRoomCount(roomRepository.findByOwnerId(user.getId()).size())
@@ -328,6 +389,24 @@ public class UserDashboardService {
                 .status(notification.getStatus())
                 .createdAt(notification.getCreatedAt())
                 .isRead(notification.getIsRead())
+                .build();
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private UserSearchItemResponse mapUserSearchRow(Object[] row) {
+        return UserSearchItemResponse.builder()
+                .id(((Number) row[0]).longValue())
+                .fullName(row[1] != null ? row[1].toString() : null)
+                .username(row[2] != null ? row[2].toString() : null)
+                .email(row[3] != null ? row[3].toString() : null)
+                .phoneNumber(row[4] != null ? row[4].toString() : null)
+                .address(row[5] != null ? row[5].toString() : null)
                 .build();
     }
 
