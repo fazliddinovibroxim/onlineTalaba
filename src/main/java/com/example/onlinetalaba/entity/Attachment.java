@@ -26,8 +26,4 @@ public class Attachment extends BaseUUIDEntity {
 
     @Column(nullable = false, updatable = false)
     private long size;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "library_material_id")
-    private LibraryMaterial libraryMaterial;
 }

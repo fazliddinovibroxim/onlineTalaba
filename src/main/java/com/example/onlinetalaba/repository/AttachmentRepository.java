@@ -8,5 +8,4 @@ import java.util.Optional;
 
 public interface AttachmentRepository extends JpaRepository<Attachment, UUID> {
     Optional<Attachment> findByServerName(String serverName);
-    Optional<Attachment> findByLibraryMaterialId(Long libraryMaterialId);
 }

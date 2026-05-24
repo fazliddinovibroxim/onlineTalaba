@@ -5,6 +5,7 @@ import com.example.onlinetalaba.dto.library.LibraryMaterialResponse;
 import com.example.onlinetalaba.entity.User;
 import com.example.onlinetalaba.security.CurrentUser;
 import com.example.onlinetalaba.service.LibraryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,13 +25,11 @@ public class LibraryController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<LibraryMaterialResponse> upload(
             @PathVariable Long roomId,
-            @RequestPart("data") LibraryMaterialRequest request,
+            @RequestPart("data") @Valid LibraryMaterialRequest request,
             @RequestPart(value = "files", required = false) MultipartFile[] files,
-            // Backward-compat: some clients send a single part named "file"
-            @RequestPart(value = "file", required = false) MultipartFile file,
             @CurrentUser User currentUser
     ) throws IOException {
-        return ResponseEntity.ok(libraryService.uploadToRoom(roomId, request, files, file, currentUser));
+        return ResponseEntity.ok(libraryService.uploadToRoom(roomId, request, files, currentUser));
     }
 
     @GetMapping

@@ -12,11 +12,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     Optional<ChatRoom> findByUserOneIdAndUserTwoId(Long userOneId, Long userTwoId);
 
-    @Query("""
-            SELECT c FROM ChatRoom c
-            WHERE c.userOne.id = :userId OR c.userTwo.id = :userId
-            ORDER BY COALESCE(c.lastMessageAt, c.id) DESC, c.id DESC
-            """)
+    @Query(value = """
+            SELECT *
+            FROM chat_rooms
+            WHERE user_one_id = :userId OR user_two_id = :userId
+            ORDER BY last_message_at DESC NULLS LAST, id DESC
+            """, nativeQuery = true)
     List<ChatRoom> findAllForUser(@Param("userId") Long userId);
 
     @Query("""

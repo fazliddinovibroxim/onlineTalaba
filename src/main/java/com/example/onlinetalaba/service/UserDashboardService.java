@@ -47,6 +47,7 @@ public class UserDashboardService {
     private final RoomJoinRequestRepository roomJoinRequestRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
+    private final AttachmentRepository attachmentRepository;
 
     @Transactional(readOnly = true)
     public Page<UserSearchItemResponse> searchUsers(String q,
@@ -369,6 +370,14 @@ public class UserDashboardService {
     }
 
     private DashboardMaterialResponse toMaterialCard(LibraryMaterial material) {
+        String fileUrl = null;
+
+        if (material.getAttachmentIds() != null && !material.getAttachmentIds().isEmpty()) {
+            fileUrl = attachmentRepository.findById(material.getAttachmentIds().get(0))
+                    .map(Attachment::getFileUrl)
+                    .orElse(null);
+        }
+
         return DashboardMaterialResponse.builder()
                 .materialId(material.getId())
                 .roomId(material.getRoom().getId())
@@ -376,7 +385,7 @@ public class UserDashboardService {
                 .title(material.getTitle())
                 .uploadedBy(material.getUploadedBy().getFullName())
                 .materialType(material.getMaterialType())
-                .fileUrl(material.getAttachment() == null ? null : material.getAttachment().getFileUrl())
+                .fileUrl(fileUrl)
                 .createdAt(material.getDatetimeCreated())
                 .build();
     }

@@ -4,6 +4,8 @@ import com.example.onlinetalaba.enums.LibraryMaterialType;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 public class LibraryMaterialResponse {
@@ -15,5 +17,5 @@ public class LibraryMaterialResponse {
     private String description;
     private LibraryMaterialType materialType;
     private boolean active;
-    private AttachmentResponse attachment;
+    private List<AttachmentResponse> attachments;
 }

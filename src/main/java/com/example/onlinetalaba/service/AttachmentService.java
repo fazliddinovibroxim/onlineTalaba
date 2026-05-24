@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.*;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -41,29 +42,26 @@ public class AttachmentService {
     @Value("${custom_app_config.baseUrl}")
     private String baseUrl;
 
-    public Attachment uploadLibraryFile(MultipartFile file, LibraryMaterial libraryMaterial) throws IOException {
+    public Attachment uploadLibraryFile(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File is empty");
         }
 
-        createUploadDirIfNeeded(); // template dagi kabi
+        createUploadDirIfNeeded();
 
         String ext = getExtension(file.getOriginalFilename());
         String serverName = UUID.randomUUID() + ext;
 
-        Path uploadPath = Paths.get(uploadDirectory).toAbsolutePath().normalize();
-        Files.createDirectories(uploadPath);
-
+        Path uploadPath = baseUploadPath();
         Path targetLocation = uploadPath.resolve(serverName);
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
         Attachment attachment = Attachment.builder()
                 .serverName(serverName)
                 .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : serverName)
-                .contentType(file.getContentType())
+                .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
                 .size(file.getSize())
-                .fileUrl(baseUrl + serverName) // template dagi kabi, sodda
-                .libraryMaterial(libraryMaterial) // builder da o'zida set
+                .fileUrl(baseUrl + "/api/v1/library/files/" + serverName)
                 .build();
 
         return attachmentRepository.save(attachment);
@@ -84,10 +82,7 @@ public class AttachmentService {
         String ext = getExtension(file.getOriginalFilename());
         String serverName = UUID.randomUUID() + ext;
 
-        Path uploadPath = Paths.get(uploadDirectory).toAbsolutePath().normalize();
-        Files.createDirectories(uploadPath);
-
-        Path targetLocation = uploadPath.resolve(serverName);
+        Path targetLocation = baseUploadPath().resolve(serverName);
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
         Attachment attachment = Attachment.builder()
@@ -95,7 +90,7 @@ public class AttachmentService {
                 .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : serverName)
                 .contentType(contentType)
                 .size(file.getSize())
-                .fileUrl(baseUrl + serverName)
+                .fileUrl(baseUrl + "/api/v1/library/files/" + serverName)
                 .build();
 
         return attachmentRepository.save(attachment).getFileUrl();
@@ -111,10 +106,7 @@ public class AttachmentService {
         String ext = getExtension(file.getOriginalFilename());
         String serverName = UUID.randomUUID() + ext;
 
-        Path uploadPath = Paths.get(uploadDirectory).toAbsolutePath().normalize();
-        Files.createDirectories(uploadPath);
-
-        Path targetLocation = uploadPath.resolve(serverName);
+        Path targetLocation = baseUploadPath().resolve(serverName);
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
         Attachment attachment = Attachment.builder()
@@ -122,23 +114,10 @@ public class AttachmentService {
                 .originalName(file.getOriginalFilename() != null ? file.getOriginalFilename() : serverName)
                 .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
                 .size(file.getSize())
-                .fileUrl(baseUrl + serverName)
+                .fileUrl(baseUrl + "/api/v1/library/files/" + serverName)
                 .build();
 
         return attachmentRepository.save(attachment).getFileUrl();
-    }
-
-    private String uploadChatFile(MultipartFile file, boolean imageOnly) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("File is empty");
-        }
-
-        String contentType = file.getContentType();
-        if (imageOnly && (contentType == null || !contentType.toLowerCase().startsWith("image/"))) {
-            throw new BadRequestException("Only image files are allowed");
-        }
-
-        return attachmentRepository.save(storeAttachment(file)).getFileUrl();
     }
 
     public Resource loadAsResource(String serverName) throws MalformedURLException {
@@ -157,14 +136,15 @@ public class AttachmentService {
                 .orElseThrow(() -> new NotFoundException("Attachment not found"));
     }
 
-    public void deleteAttachmentByLibraryMaterial(LibraryMaterial libraryMaterial) throws IOException {
-        Attachment attachment = attachmentRepository.findByLibraryMaterialId(libraryMaterial.getId())
-                .orElseThrow(() -> new NotFoundException("Attachment not found"));
+    public void deleteAttachmentsByIds(List<UUID> attachmentIds) throws IOException {
+        if (attachmentIds == null || attachmentIds.isEmpty()) return;
 
-        deleteStoredFile(attachment.getServerName());
-        attachmentRepository.delete(attachment);
-
-        log.info("Attachment deleted for library material {}", libraryMaterial.getId());
+        List<Attachment> attachments = attachmentRepository.findAllById(attachmentIds);
+        for (Attachment attachment : attachments) {
+            deleteStoredFile(attachment.getServerName());
+        }
+        attachmentRepository.deleteAll(attachments);
+        log.info("Deleted {} attachments", attachments.size());
     }
 
     public void deleteAttachmentByServerName(String serverName) throws IOException {
@@ -173,7 +153,6 @@ public class AttachmentService {
 
         deleteStoredFile(serverName);
         attachmentRepository.delete(attachment);
-
         log.info("Attachment {} deleted", serverName);
     }
 
@@ -184,30 +163,7 @@ public class AttachmentService {
         validateDeleteAccess(attachment, currentUser);
         deleteStoredFile(serverName);
         attachmentRepository.delete(attachment);
-
         log.info("Attachment {} deleted by user {}", serverName, currentUser.getId());
-    }
-
-    private Attachment storeAttachment(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("File is empty");
-        }
-
-        createUploadDirIfNeeded();
-
-        String ext = getExtension(file.getOriginalFilename());
-        String serverName = UUID.randomUUID() + ext;
-        Path targetLocation = resolveStoredFile(serverName);
-
-        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-        return Attachment.builder()
-                .serverName(serverName)
-                .originalName(file.getOriginalFilename() == null ? serverName : file.getOriginalFilename())
-                .contentType(resolveContentType(file, targetLocation))
-                .size(file.getSize())
-                .fileUrl(baseUrl + "/api/v1/library/files/" + serverName)
-                .build();
     }
 
     private void createUploadDirIfNeeded() throws IOException {
@@ -225,7 +181,6 @@ public class AttachmentService {
         if (serverName == null || serverName.isBlank()) {
             throw new BadRequestException("Invalid file name");
         }
-
         Path resolved = baseUploadPath().resolve(serverName).normalize();
         if (!resolved.startsWith(baseUploadPath())) {
             throw new BadRequestException("Invalid file path");
@@ -238,34 +193,7 @@ public class AttachmentService {
         Files.deleteIfExists(filePath);
     }
 
-    private String resolveContentType(MultipartFile file, Path targetLocation) throws IOException {
-        if (file.getContentType() != null && !file.getContentType().isBlank()) {
-            return file.getContentType();
-        }
-
-        String probed = Files.probeContentType(targetLocation);
-        return probed == null ? "application/octet-stream" : probed;
-    }
-
     private void validateDeleteAccess(Attachment attachment, User currentUser) {
-        LibraryMaterial libraryMaterial = attachment.getLibraryMaterial();
-
-        if (libraryMaterial != null) {
-            RoomMember member = roomMemberRepository
-                    .findByRoomIdAndUserIdAndActiveTrue(libraryMaterial.getRoom().getId(), currentUser.getId())
-                    .orElseThrow(() -> new ForbiddenException("Access denied"));
-
-            boolean canDelete = libraryMaterial.getUploadedBy().getId().equals(currentUser.getId())
-                    || member.getRole() == RoomMemberRole.OWNER
-                    || member.isCanManageRoom()
-                    || member.isCanUploadMaterials();
-
-            if (!canDelete) {
-                throw new ForbiddenException("You do not have permission to delete this attachment");
-            }
-            return;
-        }
-
         if (attachment.getCreatedBy() == null || !attachment.getCreatedBy().getId().equals(currentUser.getId())) {
             throw new ForbiddenException("You do not have permission to delete this attachment");
         }

@@ -4,6 +4,10 @@ import com.example.onlinetalaba.enums.LibraryMaterialType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 @Entity
 @Table(name = "library_materials")
 @Getter
@@ -34,6 +38,9 @@ public class LibraryMaterial extends BaseEntity {
     @Column(nullable = false)
     private boolean active = true;
 
-    @OneToOne(mappedBy = "libraryMaterial", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Attachment attachment;
+    @ElementCollection
+    @CollectionTable(name = "library_material_attachments",
+            joinColumns = @JoinColumn(name = "library_material_id"))
+    @Column(name = "attachment_id")
+    private List<UUID> attachmentIds = new ArrayList<>();
 }

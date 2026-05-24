@@ -12,6 +12,7 @@ import com.example.onlinetalaba.enums.RoomMemberRole;
 import com.example.onlinetalaba.handler.BadRequestException;
 import com.example.onlinetalaba.handler.ForbiddenException;
 import com.example.onlinetalaba.handler.NotFoundException;
+import com.example.onlinetalaba.repository.AttachmentRepository;
 import com.example.onlinetalaba.repository.LibraryMaterialRepository;
 import com.example.onlinetalaba.repository.RoomMemberRepository;
 import com.example.onlinetalaba.repository.RoomRepository;
@@ -21,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -29,6 +32,7 @@ import java.util.List;
 public class LibraryService {
 
     private final LibraryMaterialRepository libraryMaterialRepository;
+    private final AttachmentRepository attachmentRepository;
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final AttachmentService attachmentService;
@@ -37,9 +41,7 @@ public class LibraryService {
     public LibraryMaterialResponse uploadToRoom(Long roomId,
                                                 LibraryMaterialRequest request,
                                                 MultipartFile[] files,
-                                                MultipartFile legacyFile,
                                                 User currentUser) throws IOException {
-
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new NotFoundException("Room not found"));
 
@@ -47,15 +49,15 @@ public class LibraryService {
             throw new ForbiddenException("Room is not active");
         }
 
-        MultipartFile file = resolveSingleFile(files, legacyFile);
-        if (file == null || file.isEmpty()) {
+        if (files == null || files.length == 0) {
             throw new BadRequestException("File is required");
         }
+
+        validateRequest(request);
 
         roomMemberRepository.findByRoomIdAndUserIdAndActiveTrue(roomId, currentUser.getId())
                 .orElseThrow(() -> new ForbiddenException("Access denied"));
 
-        // 1. Avval material saqla
         LibraryMaterial material = LibraryMaterial.builder()
                 .room(room)
                 .uploadedBy(currentUser)
@@ -63,25 +65,19 @@ public class LibraryService {
                 .description(request.getDescription())
                 .materialType(request.getMaterialType())
                 .active(true)
+                .attachmentIds(new ArrayList<>())
                 .build();
 
         material = libraryMaterialRepository.save(material);
 
-        // 2. Fayl yuklash (template kabi)
-        Attachment attachment = attachmentService.uploadLibraryFile(file, material);
-        material.setAttachment(attachment);
-
-        // 3. Ikkinchi marta saqlash (template kabi)
-        material = libraryMaterialRepository.save(material);
-
-        return toResponse(material);
-    }
-
-    private MultipartFile resolveSingleFile(MultipartFile[] files, MultipartFile legacyFile) {
-        if (files != null && files.length > 0 && !files[0].isEmpty()) {
-            return files[0];
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) continue;
+            Attachment attachment = attachmentService.uploadLibraryFile(file);
+            material.getAttachmentIds().add(attachment.getId());
         }
-        return legacyFile;
+
+        material = libraryMaterialRepository.save(material);
+        return toResponse(material);
     }
 
     public List<LibraryMaterialResponse> getAllByRoom(Long roomId, User currentUser) {
@@ -144,14 +140,43 @@ public class LibraryService {
             throw new ForbiddenException("You do not have permission to delete this material");
         }
 
-        attachmentService.deleteAttachmentByLibraryMaterial(material);
+        // Attachmentlarni o'chirish
+        attachmentService.deleteAttachmentsByIds(material.getAttachmentIds());
 
         material.setActive(false);
-        material.setAttachment(null);
+        material.getAttachmentIds().clear();
         libraryMaterialRepository.save(material);
     }
 
+    private void validateRequest(LibraryMaterialRequest request) {
+        if (request == null) {
+            throw new BadRequestException("Library material data is required");
+        }
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new BadRequestException("Title is required");
+        }
+        if (request.getMaterialType() == null) {
+            throw new BadRequestException("Material type is required");
+        }
+    }
+
     private LibraryMaterialResponse toResponse(LibraryMaterial material) {
+        List<AttachmentResponse> attachments = new ArrayList<>();
+
+        if (material.getAttachmentIds() != null && !material.getAttachmentIds().isEmpty()) {
+            attachments = attachmentRepository.findAllById(material.getAttachmentIds())
+                    .stream()
+                    .map(a -> new AttachmentResponse(
+                            a.getId(),
+                            a.getOriginalName(),
+                            a.getServerName(),
+                            a.getFileUrl(),
+                            a.getContentType(),
+                            a.getSize()
+                    ))
+                    .toList();
+        }
+
         return LibraryMaterialResponse.builder()
                 .id(material.getId())
                 .roomId(material.getRoom().getId())
@@ -161,14 +186,7 @@ public class LibraryService {
                 .description(material.getDescription())
                 .materialType(material.getMaterialType())
                 .active(material.isActive())
-                .attachment(material.getAttachment() == null ? null :
-                        new AttachmentResponse(
-                                material.getAttachment().getServerName(),
-                                material.getAttachment().getOriginalName(),
-                                material.getAttachment().getContentType(),
-                                material.getAttachment().getSize(),
-                                material.getAttachment().getFileUrl()
-                        ))
+                .attachments(attachments)
                 .build();
     }
 }
